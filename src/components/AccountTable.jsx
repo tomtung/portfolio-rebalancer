@@ -4,7 +4,7 @@ import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateCategoryStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
-const AccountTable = ({ name, positions, totalValue, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
+const AccountTable = ({ name, positions, totalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
   const accountStats = useMemo(() => calculateCategoryStats(positions, metadata), [positions, metadata]);
@@ -68,6 +68,11 @@ const AccountTable = ({ name, positions, totalValue, portfolioTotal, onAdjustmen
         </div>
         <div className="text-right">
           <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
+          {totalAdjustment !== 0 && (
+             <div className={`text-xs font-medium ${totalAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {totalAdjustment > 0 ? '+' : ''}{formatCurrency(totalAdjustment)}
+             </div>
+          )}
           <div className="text-xs text-gray-500 font-medium">
              {formatPercent(percentOfPortfolio)} of Portfolio
           </div>
