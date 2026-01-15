@@ -15,6 +15,7 @@ import AutoResizingTextarea from './components/AutoResizingTextarea';
 import AllocationPieChart from './components/AllocationPieChart';
 import AccountTable from './components/AccountTable';
 import AddPositionForm from './components/AddPositionForm';
+import CategoryManager from './components/CategoryManager';
 
 export default function App() {
   const [rawData, setRawData] = usePersistentString('portfolio_csv_v1', INITIAL_CSV_DATA);
@@ -79,6 +80,15 @@ export default function App() {
         };
       }).filter(Boolean); // Filter out nulls
   }, [parsedAccountsMap, newPositions]);
+
+  // Extract all unique symbols for the category manager
+  const allSymbols = useMemo(() => {
+      const symbols = new Set();
+      mergedAccounts.forEach(account => {
+          account.positions.forEach(pos => symbols.add(pos.Symbol));
+      });
+      return Array.from(symbols).sort();
+  }, [mergedAccounts]);
 
   // 3. Apply Adjustments
   const simulatedAccounts = useMemo(() => {
@@ -259,36 +269,19 @@ export default function App() {
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <details>
-                <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                <Tag className="w-4 h-4" /> Edit Symbol Categories (JSON)
-                </summary>
-                <div className="mt-4">
-                <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-100 text-xs text-gray-600">
-                    <p className="font-semibold mb-1">Expected JSON Format:</p>
-                    <p className="mb-2">A dictionary where keys are Symbols.</p>
-                    <ul className="list-disc list-inside space-y-1">
-                        <li><strong>Simple Category:</strong> <code>"AAPL": "US Equities / Large Cap"</code></li>
-                        <li><strong>Split Allocation:</strong> <code>"VTI": &#123; "US Equities / Large Cap": 0.8, "US Equities / Mid Cap": 0.2 &#125;</code></li>
-                        <li>Use " / " to create sub-categories for automatic color grouping.</li>
-                    </ul>
-                </div>
-                <div className="flex justify-between mb-2">
-                    <span className="text-xs text-gray-400">Map symbols to categories</span>
-                    <button 
-                        onClick={() => setConfirmAction('meta')}
-                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                        <RefreshCw className="w-3 h-3" /> Reset
-                    </button>
-                </div>
-                <AutoResizingTextarea
-                    value={rawMetadata}
-                    onChange={(e) => setRawMetadata(e.target.value)}
-                    className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto"
-                />
-                </div>
-            </details>
+                <details>
+                    <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
+                        <Tag className="w-4 h-4" /> Manage Symbol Categories
+                    </summary>
+                    <div className="mt-4">
+                        <CategoryManager 
+                            symbols={allSymbols} 
+                            metadata={metadata} 
+                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+                            onReset={() => setConfirmAction('meta')}
+                        />
+                    </div>
+                </details>
             </div>
         </div>
 
