@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Tag, Search, Edit2, Check, X, AlertCircle, Code } from 'lucide-react';
+import { Tag, Search, Edit2, Check, X, AlertCircle, Code, Split } from 'lucide-react';
 import AutoResizingTextarea from './AutoResizingTextarea';
+import SplitAllocator from './SplitAllocator';
 
 export default function CategoryManager({ symbols, metadata, onUpdateMetadata, onReset }) {
   const [filter, setFilter] = useState('');
   const [editingSymbol, setEditingSymbol] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const [isSplitMode, setIsSplitMode] = useState(false);
   const [showRawJson, setShowRawJson] = useState(false);
   const [rawJsonValue, setRawJsonValue] = useState('');
 
@@ -37,27 +39,38 @@ export default function CategoryManager({ symbols, metadata, onUpdateMetadata, o
     setEditingSymbol(symbol);
     const val = metadata[symbol];
     if (typeof val === 'object') {
-        setEditValue(JSON.stringify(val, null, 2));
+        setIsSplitMode(true);
+        setEditValue(val); // Keep object for split mode
     } else {
+        setIsSplitMode(false);
         setEditValue(val || '');
     }
   };
 
   const handleSave = (symbol) => {
-    let newValue = editValue.trim();
+    let newValue = editValue;
     
-    // Try to parse if it looks like JSON or if original was object
-    if (newValue.startsWith('{')) {
-        try {
-            newValue = JSON.parse(newValue);
-        } catch (e) {
-            alert("Invalid JSON format for split allocation.");
-            return;
+    if (!isSplitMode && typeof newValue === 'string') {
+        newValue = newValue.trim();
+        // If user typed JSON manually in simple mode, try to parse
+        if (newValue.startsWith('{')) {
+            try {
+                newValue = JSON.parse(newValue);
+            } catch (e) {
+                alert("Invalid JSON format.");
+                return;
+            }
         }
     }
 
     const newMetadata = { ...metadata };
-    if (newValue === '' || (typeof newValue === 'object' && Object.keys(newValue).length === 0)) {
+    
+    // Check for empty updates
+    if (
+        newValue === '' || 
+        newValue === null ||
+        (typeof newValue === 'object' && Object.keys(newValue).length === 0)
+    ) {
         delete newMetadata[symbol];
     } else {
         newMetadata[symbol] = newValue;
@@ -65,6 +78,7 @@ export default function CategoryManager({ symbols, metadata, onUpdateMetadata, o
     
     onUpdateMetadata(newMetadata);
     setEditingSymbol(null);
+    setIsSplitMode(false);
   };
 
   const handleRawJsonChange = (e) => {
@@ -86,6 +100,18 @@ export default function CategoryManager({ symbols, metadata, onUpdateMetadata, o
           setRawJsonValue(JSON.stringify(metadata, null, 2));
       }
       setShowRawJson(!showRawJson);
+  };
+
+  const toggleSplitMode = () => {
+      setIsSplitMode(!isSplitMode);
+      // Reset value when switching modes to avoid type mismatch issues
+      if (!isSplitMode) {
+          // Switching to Split: init with empty object or current string as one category
+          setEditValue(typeof editValue === 'string' && editValue ? { [editValue]: 1.0 } : {});
+      } else {
+          // Switching to Simple: clear or pick first key? Let's just clear to avoid confusion.
+          setEditValue('');
+      }
   };
 
   return (
@@ -156,25 +182,45 @@ export default function CategoryManager({ symbols, metadata, onUpdateMetadata, o
 
                             return (
                                 <tr key={symbol} className="hover:bg-gray-50">
-                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{symbol}</td>
+                                    <td className="px-4 py-3 text-sm font-medium text-gray-900 align-top pt-4">{symbol}</td>
                                     <td className="px-4 py-3 text-sm text-gray-500">
                                         {isEditing ? (
                                             <div className="relative">
-                                                <input 
-                                                    type="text" 
-                                                    value={editValue}
-                                                    onChange={e => setEditValue(e.target.value)}
-                                                    onKeyDown={e => { if(e.key === 'Enter') handleSave(symbol); else if(e.key === 'Escape') setEditingSymbol(null); }}
-                                                    className="w-full p-1 border border-blue-400 rounded focus:outline-none text-sm"
-                                                    autoFocus
-                                                    list="category-suggestions"
-                                                    placeholder="Enter category or JSON..."
-                                                />
-                                                <datalist id="category-suggestions">
-                                                    {existingCategories.map(c => <option key={c} value={c} />)}
-                                                </datalist>
-                                                {editValue && editValue.startsWith('{') && (
-                                                    <span className="text-[10px] text-orange-500 absolute right-0 -bottom-4">JSON Mode</span>
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-[10px] uppercase text-gray-400 font-bold">
+                                                        {isSplitMode ? "Split Allocation" : "Single Category"}
+                                                    </span>
+                                                    <button 
+                                                        onClick={toggleSplitMode}
+                                                        className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
+                                                    >
+                                                        <Split className="w-3 h-3" />
+                                                        {isSplitMode ? "Switch to Simple" : "Switch to Split"}
+                                                    </button>
+                                                </div>
+                                                
+                                                {isSplitMode ? (
+                                                    <SplitAllocator 
+                                                        value={editValue} 
+                                                        onChange={setEditValue}
+                                                        existingCategories={existingCategories}
+                                                    />
+                                                ) : (
+                                                    <>
+                                                        <input 
+                                                            type="text" 
+                                                            value={typeof editValue === 'string' ? editValue : ''}
+                                                            onChange={e => setEditValue(e.target.value)}
+                                                            onKeyDown={e => { if(e.key === 'Enter') handleSave(symbol); else if(e.key === 'Escape') setEditingSymbol(null); }}
+                                                            className="w-full p-1 border border-blue-400 rounded focus:outline-none text-sm"
+                                                            autoFocus
+                                                            list="category-suggestions"
+                                                            placeholder="Enter category..."
+                                                        />
+                                                        <datalist id="category-suggestions">
+                                                            {existingCategories.map(c => <option key={c} value={c} />)}
+                                                        </datalist>
+                                                    </>
                                                 )}
                                             </div>
                                         ) : (
@@ -193,7 +239,7 @@ export default function CategoryManager({ symbols, metadata, onUpdateMetadata, o
                                             )
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-right text-sm">
+                                    <td className="px-4 py-3 text-right text-sm align-top pt-4">
                                         {isEditing ? (
                                             <div className="flex justify-end gap-1">
                                                 <button onClick={() => handleSave(symbol)} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
