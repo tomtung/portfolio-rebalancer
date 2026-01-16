@@ -51,7 +51,9 @@ export const processData = (csvText) => {
     // We used to skip 0 value rows, but now we keep them so users can make adjustments.
 
     if (accountName === 'Waymo WMU') symbol = 'WMU';
-    if (!symbol) symbol = 'Unknown';
+    
+    // Ignore rows where either account name or symbol is missing
+    if (!accountName || !symbol) continue;
 
     if (!processedAccounts[accountName]) {
       processedAccounts[accountName] = { totalValue: 0, positions: {} };

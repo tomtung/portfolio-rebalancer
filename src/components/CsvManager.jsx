@@ -191,6 +191,15 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
 
       {showRaw ? (
           <div className="p-4">
+              <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-100 text-xs text-gray-600">
+                  <p className="font-semibold mb-1">CSV Format Details:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                      <li>Standard CSV format with headers on the first line.</li>
+                      <li><strong>Fidelity Users:</strong> The "Positions" export works directly.</li>
+                      <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Description</code>, <code>Current value</code>.</li>
+                      <li>Currency values can include '$' and ','.</li>
+                  </ul>
+              </div>
               <AutoResizingTextarea
                 value={rawText}
                 onChange={handleRawChange}
