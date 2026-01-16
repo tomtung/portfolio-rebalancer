@@ -1,8 +1,36 @@
 export const getCategoryRatios = (symbol, metadata) => {
-  const meta = metadata[symbol];
-  if (!meta) return { "Unknown": 1.0 }; 
-  if (typeof meta === 'string') return { [meta]: 1.0 };
-  return meta; 
+  const rawMeta = metadata[symbol];
+  if (!rawMeta) return { "Unknown": 1.0 }; 
+  
+  let categoryData;
+  if (typeof rawMeta === 'object' && rawMeta !== null) {
+      if ('category' in rawMeta) {
+          categoryData = rawMeta.category;
+      } else if ('description' in rawMeta) {
+          // New structure but missing category key altogether
+          categoryData = "Unknown";
+      } else {
+          // Assume old split format: { "Cat A": 0.5, "Cat B": 0.5 }
+          categoryData = rawMeta;
+      }
+  } else {
+      categoryData = rawMeta;
+  }
+
+  if (!categoryData || (typeof categoryData === 'object' && Object.keys(categoryData).length === 0)) {
+      return { "Unknown": 1.0 };
+  }
+
+  if (typeof categoryData === 'string') return { [categoryData.trim() || "Unknown"]: 1.0 };
+  
+  // For split allocations, ensure no empty keys
+  const sanitized = {};
+  Object.entries(categoryData).forEach(([k, v]) => {
+      sanitized[k.trim() || "Unknown"] = v;
+  });
+  
+  if (Object.keys(sanitized).length === 0) return { "Unknown": 1.0 };
+  return sanitized;
 };
 
 export const calculateCategoryStats = (positions, metadata) => {

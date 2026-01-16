@@ -39,7 +39,7 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
     }
   }, [rawText]);
 
-  const requiredColumns = ['Account Name', 'Symbol', 'Description', 'Current value'];
+  const requiredColumns = ['Account Name', 'Symbol', 'Current value'];
   
   const columnIndices = useMemo(() => {
       const indices = {};
@@ -196,7 +196,7 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                   <ul className="list-disc list-inside space-y-1">
                       <li>Standard CSV format with headers on the first line.</li>
                       <li><strong>Fidelity Users:</strong> The "Positions" export works directly.</li>
-                      <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Description</code>, <code>Current value</code>.</li>
+                      <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Current value</code>.</li>
                       <li>Currency values can include '$' and ','.</li>
                   </ul>
               </div>
@@ -218,11 +218,15 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                     <tr>
-                        {requiredColumns.map(col => (
-                            <th key={col} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                {col}
-                            </th>
-                        ))}
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                            Account Name
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                            Symbol
+                        </th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Current value
+                        </th>
                         <th className="w-10"></th>
                     </tr>
                 </thead>
@@ -236,8 +240,12 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                                 if (col === 'Account Name') listId = 'account-suggestions';
                                 if (col === 'Symbol') listId = 'symbol-suggestions';
 
+                                let widthClass = "";
+                                if (col === 'Account Name') widthClass = "w-1/3";
+                                if (col === 'Symbol') widthClass = "w-1/4";
+
                                 return (
-                                    <td key={`${rowIndex}-${col}`} className="px-3 py-2 text-sm">
+                                    <td key={`${rowIndex}-${col}`} className={`px-3 py-2 text-sm ${widthClass}`}>
                                         <input 
                                             type="text" 
                                             value={val}

@@ -108,20 +108,26 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
           <tbody className="divide-y divide-gray-200 bg-white">
             {sortedPositions.map((row) => {
                 const meta = metadata[row.Symbol];
-                const isSplit = typeof meta === 'object';
-                const categoryLabel = isSplit ? 'Split' : (meta || "Unknown");
+                const isSplit = meta && typeof meta === 'object' && meta.category !== undefined 
+                    ? typeof meta.category === 'object' 
+                    : typeof meta === 'object';
+                
+                const categoryLabelVal = meta && typeof meta === 'object' && meta.category !== undefined ? meta.category : meta;
+                const categoryLabel = isSplit ? 'Split' : (categoryLabelVal || "Unknown");
                 const isUnknown = categoryLabel === "Unknown";
+
+                const description = meta && typeof meta === 'object' && meta.description ? meta.description : row.Description || '';
                 
                 return (
                   <tr key={row.Symbol} className="hover:bg-gray-50 transition-colors">
                     <td className="whitespace-nowrap py-4 pl-6 pr-3 text-sm font-medium text-gray-900">
                       <div>{row.Symbol}</div>
-                      <div className="text-xs text-gray-400 font-normal truncate max-w-[200px]" title={row.Description}>{row.Description}</div>
+                      <div className="text-xs text-gray-400 font-normal truncate max-w-[200px]" title={description}>{description}</div>
                     </td>
                     <td className="py-4 px-3 text-sm text-gray-500">
                       {isSplit ? (
                         <div className="flex flex-col gap-1">
-                          {Object.entries(meta).sort((a,b) => b[1] - a[1]).map(([cat, ratio]) => (
+                          {Object.entries(categoryLabelVal).sort((a,b) => b[1] - a[1]).map(([cat, ratio]) => (
                             <span key={cat} className="inline-flex items-center text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 w-fit">
                               <span className="font-medium mr-1">{cat}</span>
                               <span className="text-indigo-400">{Math.round(ratio * 100)}%</span>

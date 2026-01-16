@@ -44,7 +44,6 @@ export const processData = (csvText) => {
 
     const accountName = getValue(rowObj, 'Account Name');
     let symbol = getValue(rowObj, 'Symbol');
-    const description = getValue(rowObj, 'Description');
     const rawValue = getValue(rowObj, 'Current value');
 
     const numericValue = parseCurrency(rawValue);
@@ -65,7 +64,6 @@ export const processData = (csvText) => {
     if (!account.positions[symbol]) {
       account.positions[symbol] = {
         Symbol: symbol,
-        Description: description,
         OriginalValue: 0,
       };
     }

@@ -14,7 +14,7 @@ import ConfirmModal from './components/ConfirmModal';
 import AutoResizingTextarea from './components/AutoResizingTextarea';
 import AllocationPieChart from './components/AllocationPieChart';
 import AccountTable from './components/AccountTable';
-import CategoryManager from './components/CategoryManager';
+import MetadataManager from './components/MetadataManager';
 import CsvManager from './components/CsvManager';
 
 export default function App() {
@@ -204,10 +204,10 @@ export default function App() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <details>
                     <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                        <Tag className="w-4 h-4" /> Edit Symbol Categories
+                        <Tag className="w-4 h-4" /> Edit Symbol Metadata
                     </summary>
                     <div className="mt-4">
-                        <CategoryManager 
+                        <MetadataManager 
                             symbols={allSymbols} 
                             metadata={metadata} 
                             onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
