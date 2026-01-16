@@ -4,7 +4,7 @@ import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateCategoryStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
-const AccountTable = ({ name, positions, totalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
+const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
   const accountStats = useMemo(() => calculateCategoryStats(positions, metadata), [positions, metadata]);
@@ -67,7 +67,12 @@ const AccountTable = ({ name, positions, totalValue, totalAdjustment, portfolioT
           <span className="text-sm text-gray-500">{positions.length} Positions</span>
         </div>
         <div className="text-right">
-          <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
+          <div className="flex flex-col items-end">
+             <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
+             {totalAdjustment !== 0 && (
+                <div className="text-xs text-gray-400 line-through">{formatCurrency(originalTotalValue)}</div>
+             )}
+          </div>
           {totalAdjustment !== 0 && (
              <div className={`text-xs font-medium ${totalAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalAdjustment > 0 ? '+' : ''}{formatCurrency(totalAdjustment)}
@@ -95,7 +100,7 @@ const AccountTable = ({ name, positions, totalValue, totalAdjustment, portfolioT
             <tr>
               <HeaderCell label="Symbol" sortKey="Symbol" className="pl-6" />
               <HeaderCell label="Category" sortKey="Category" />
-              <HeaderCell label="Simulated Value" sortKey="SimulatedValue" align="right" />
+              <HeaderCell label="Dollar Value" sortKey="SimulatedValue" align="right" />
               <HeaderCell label="% of Account" sortKey="PercentOfAccount" align="right" />
               <HeaderCell label="Adjustment" sortKey="adjustment" align="right" className="bg-blue-50 border-b border-blue-100 text-blue-600" />
             </tr>

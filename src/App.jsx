@@ -100,6 +100,7 @@ export default function App() {
   }, [mergedAccounts, adjustments]);
 
   const totalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.simulatedTotalValue, 0);
+  const originalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.originalTotalValue, 0);
   const totalPortfolioAdjustment = simulatedAccounts.reduce((sum, acc) => sum + acc.totalAdjustment, 0);
   const { categories, categoryDetails } = useMemo(() => calculateAllocations(simulatedAccounts, metadata), [simulatedAccounts, metadata]);
   const globalColors = useMemo(() => generateColorMap(categories), [categories]);
@@ -167,13 +168,18 @@ export default function App() {
                  </button>
              )}
              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPortfolioValue)}</div>
+                <div className="flex flex-col items-end">
+                  <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPortfolioValue)}</div>
+                  {totalPortfolioAdjustment !== 0 && (
+                     <div className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</div>
+                  )}
+                </div>
                 {totalPortfolioAdjustment !== 0 && (
                   <div className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)}
                   </div>
                 )}
-                <div className="text-xs text-gray-400 uppercase tracking-wide">Simulated Portfolio Value</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wide">Portfolio Value</div>
              </div>
           </div>
         </div>
@@ -251,6 +257,7 @@ export default function App() {
               name={account.name} 
               positions={account.positions} 
               totalValue={account.simulatedTotalValue}
+              originalTotalValue={account.originalTotalValue}
               totalAdjustment={account.totalAdjustment}
               portfolioTotal={totalPortfolioValue}
               onAdjustmentChange={handleAdjustmentChange}
