@@ -48,8 +48,6 @@ export const processData = (csvText) => {
 
     const numericValue = parseCurrency(rawValue);
     // We used to skip 0 value rows, but now we keep them so users can make adjustments.
-
-    if (accountName === 'Waymo WMU') symbol = 'WMU';
     
     // Ignore rows where symbol is missing
     if (!symbol) continue;
