@@ -34,7 +34,7 @@ export default function App() {
       return data;
     } catch (err) {
       console.error("Processing error:", err);
-      setError("Failed to process data. Please check CSV format.");
+      setError(err.message || "Failed to process data. Please check CSV format.");
       return {};
     }
   }, [rawData]);
@@ -108,6 +108,17 @@ export default function App() {
   const handleAdjustmentChange = (accountName, symbol, value) => {
     const key = `${accountName}-${symbol}`;
     const numValue = parseFloat(value);
+
+    // Find original value to validate
+    const account = mergedAccounts.find(a => a.name === accountName);
+    const position = account?.positions.find(p => p.Symbol === symbol);
+    const originalValue = position?.OriginalValue || 0;
+
+    if (!isNaN(numValue) && (originalValue + numValue < 0)) {
+        alert("Resulting value cannot be negative.");
+        return;
+    }
+
     setAdjustments(prev => {
       const next = { ...prev };
       if (isNaN(numValue) || numValue === 0) delete next[key];
@@ -196,6 +207,8 @@ export default function App() {
                             csvData={rawData}
                             onUpdateCsv={setRawData}
                             onReset={() => setConfirmAction('csv')}
+                            metadata={metadata}
+                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
                         />
                     </div>
                 </details>

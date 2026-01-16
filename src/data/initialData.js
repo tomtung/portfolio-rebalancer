@@ -1,12 +1,12 @@
-export const INITIAL_CSV_DATA = `Account Name,Symbol,Current value,% of account,Quantity,Account type
-Main Brokerage,VTI,$120000.00,60.00%,500,Margin
-Main Brokerage,VXUS,$60000.00,30.00%,1000,Margin
-Main Brokerage,BND,$20000.00,10.00%,250,Cash
-Roth IRA,AVUV,$15000.00,60.00%,180,Cash
-Roth IRA,AVDV,$10000.00,40.00%,150,Cash
-Play Money,AAPL,$5000.00,50.00%,25,Cash
-Play Money,GLD,$5000.00,50.00%,25,Cash
-Play Money,USD,$500.00,5.00%,500,Cash`;
+export const INITIAL_CSV_DATA = `Account Name,Symbol,Current value
+Main Brokerage,VTI,$120000.00
+Main Brokerage,VXUS,$60000.00
+Main Brokerage,BND,$20000.00
+Roth IRA,AVUV,$15000.00
+Roth IRA,AVDV,$10000.00
+Play Money,AAPL,$5000.00
+Play Money,GLD,$5000.00
+Play Money,USD,$500.00`;
 
 export const INITIAL_METADATA_JSON = JSON.stringify({
   "VTI": { 

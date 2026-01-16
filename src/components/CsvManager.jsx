@@ -1,20 +1,34 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Code, RotateCcw } from 'lucide-react';
-import { parseCSVLine } from '../utils/csvParser';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Plus, Trash2, Code, RotateCcw, Check, X } from 'lucide-react';
+import { parseCSVLine, normalizeCsv } from '../utils/csvParser';
+import { parseCurrency } from '../utils/currency';
 import AutoResizingTextarea from './AutoResizingTextarea';
 
-export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
+export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, onUpdateMetadata }) {
   const [showRaw, setShowRaw] = useState(false);
   const [rows, setRows] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [rawText, setRawText] = useState(csvData);
+  const [addingRow, setAddingRow] = useState(null);
+  
+  // Single cell editing state
+  const [editingCell, setEditingCell] = useState(null); // { rowIndex, colIndex, tempValue, error: boolean }
+  
+  // Adding row error state
+  const [addingRowErrors, setAddingRowErrors] = useState({}); // { [colName]: boolean }
+  
+  // Highlighting
+  const [highlightedRowIndex, setHighlightedRowIndex] = useState(null);
+  const rowsRef = useRef({});
 
   // Sync internal raw text when prop changes (if not editing raw)
   useEffect(() => {
     setRawText(csvData);
   }, [csvData]);
 
-  // Parse CSV into structured data
+  const requiredColumns = ['Account Name', 'Symbol', 'Current value'];
+
+  // Parse CSV into structured data and sort
   useEffect(() => {
     if (!rawText.trim()) {
         setHeaders([]);
@@ -35,11 +49,27 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
             while (values.length < parsedHeaders.length) values.push('');
             parsedRows.push(values);
         }
+
+        // Sort rows by Account Name then Symbol
+        const accIdx = parsedHeaders.findIndex(h => h.toLowerCase() === 'account name');
+        const symIdx = parsedHeaders.findIndex(h => h.toLowerCase() === 'symbol');
+
+        if (accIdx !== -1 && symIdx !== -1) {
+            parsedRows.sort((a, b) => {
+                const accA = (a[accIdx] || '').toLowerCase();
+                const accB = (b[accIdx] || '').toLowerCase();
+                if (accA !== accB) return accA.localeCompare(accB);
+                
+                const symA = (a[symIdx] || '').toLowerCase();
+                const symB = (b[symIdx] || '').toLowerCase();
+                return symA.localeCompare(symB);
+            });
+        }
+
         setRows(parsedRows);
     }
   }, [rawText]);
 
-  const requiredColumns = ['Account Name', 'Symbol', 'Current value'];
   
   const columnIndices = useMemo(() => {
       const indices = {};
@@ -73,6 +103,16 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
       };
   }, [rows, columnIndices]);
 
+  // Scroll to highlighted row
+  useEffect(() => {
+      if (highlightedRowIndex !== null && rowsRef.current[highlightedRowIndex]) {
+          rowsRef.current[highlightedRowIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const timer = setTimeout(() => setHighlightedRowIndex(null), 2000);
+          return () => clearTimeout(timer);
+      }
+  }, [highlightedRowIndex]);
+
+
   const generateCsvString = (currentHeaders, currentRows) => {
       const escape = (val) => {
           if (val === undefined || val === null) return '';
@@ -88,50 +128,221 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
       return [headerLine, ...rowLines].join('\n');
   };
 
-  const handleCellChange = (rowIndex, colIndex, value) => {
+  const formatValue = (val) => {
+      if (!val) return val;
+      const cleanVal = val.replace(/[$,]/g, '').trim();
+      const num = parseFloat(cleanVal);
+      if (!isNaN(num)) {
+          return new Intl.NumberFormat('en-US', { 
+              style: 'currency', 
+              currency: 'USD',
+              minimumFractionDigits: 2
+          }).format(num);
+      }
+      return val;
+  };
+
+  // Editing Logic
+  const handleStartEdit = (rowIndex, colIndex, value) => {
+      setEditingCell({ rowIndex, colIndex, tempValue: value, error: false });
+  };
+
+  const handleEditChange = (value) => {
+      setEditingCell(prev => ({ ...prev, tempValue: value, error: false }));
+  };
+
+  const handleEditKeyDown = (e) => {
+      if (e.key === 'Enter') handleSaveEdit();
+      if (e.key === 'Escape') handleCancelEdit();
+  };
+
+  const handleCancelEdit = () => {
+      setEditingCell(null);
+  };
+
+  const handleSaveEdit = () => {
+      if (!editingCell) return;
+      const { rowIndex, colIndex, tempValue } = editingCell;
+      
+      const colName = Object.keys(columnIndices).find(key => columnIndices[key] === colIndex);
+
+      // Validation
+      if (colName === 'Current value') {
+          const numericVal = parseCurrency(tempValue);
+          if (numericVal < 0) {
+              setEditingCell(prev => ({ ...prev, error: true }));
+              return;
+          }
+      }
+
+      if (colName === 'Account Name' || colName === 'Symbol') {
+          const accIdx = columnIndices['Account Name'];
+          const symIdx = columnIndices['Symbol'];
+          
+          const newAcc = colName === 'Account Name' ? tempValue : rows[rowIndex][accIdx];
+          const newSym = colName === 'Symbol' ? tempValue : rows[rowIndex][symIdx];
+
+          // Check duplicate in other rows
+          const isDuplicate = rows.some((r, idx) => 
+              idx !== rowIndex && 
+              r[accIdx]?.trim() === newAcc?.trim() && 
+              r[symIdx]?.trim() === newSym?.trim()
+          );
+
+          if (isDuplicate) {
+              setEditingCell(prev => ({ ...prev, error: true }));
+              return;
+          }
+      }
+
+      // Apply format if value
+      let finalValue = tempValue;
+      if (colName === 'Current value') {
+          finalValue = formatValue(tempValue);
+      }
+
       const newRows = [...rows];
       newRows[rowIndex] = [...newRows[rowIndex]];
-      newRows[rowIndex][colIndex] = value;
-      setRows(newRows);
+      newRows[rowIndex][colIndex] = finalValue;
       
+      // Sort again if we changed Account or Symbol
+      if (colName === 'Account Name' || colName === 'Symbol') {
+           const accIdx = columnIndices['Account Name'];
+           const symIdx = columnIndices['Symbol'];
+           if (accIdx !== undefined && symIdx !== undefined) {
+               newRows.sort((a, b) => {
+                    const accA = (a[accIdx] || '').toLowerCase();
+                    const accB = (b[accIdx] || '').toLowerCase();
+                    if (accA !== accB) return accA.localeCompare(accB);
+                    const symA = (a[symIdx] || '').toLowerCase();
+                    const symB = (b[symIdx] || '').toLowerCase();
+                    return symA.localeCompare(symB);
+               });
+           }
+      }
+
+      setRows(newRows);
       const newCsv = generateCsvString(headers, newRows);
       onUpdateCsv(newCsv);
       setRawText(newCsv);
+      setEditingCell(null);
   };
 
-  const handleCellBlur = (rowIndex, colIndex, colName) => {
-      if (colName === 'Current value') {
-          const row = rows[rowIndex];
-          let val = row[colIndex];
-          if (!val) return;
+  // Add Row Logic
+  const handleStartAddRow = () => {
+      const newRow = {};
+      requiredColumns.forEach(col => newRow[col] = '');
+      setAddingRow(newRow);
+      setAddingRowErrors({});
+  };
 
-          // Remove existing formatting to check if it's a number
-          const cleanVal = val.replace(/[$,]/g, '').trim();
-          const num = parseFloat(cleanVal);
+  const handleAddingRowChange = (col, value) => {
+      setAddingRow(prev => ({ ...prev, [col]: value }));
+      if (addingRowErrors[col]) {
+          setAddingRowErrors(prev => ({ ...prev, [col]: false }));
+      }
+  };
 
-          if (!isNaN(num)) {
-              // Re-format cleanly
-              const formatted = new Intl.NumberFormat('en-US', { 
-                  style: 'currency', 
-                  currency: 'USD',
-                  minimumFractionDigits: 2
-              }).format(num);
-              
-              if (formatted !== val) {
-                  handleCellChange(rowIndex, colIndex, formatted);
-              }
+  const handleAddingRowBlur = (col) => {
+      if (col === 'Current value' && addingRow[col]) {
+          const formatted = formatValue(addingRow[col]);
+          if (formatted !== addingRow[col]) {
+              handleAddingRowChange(col, formatted);
           }
       }
   };
 
-  const handleAddRow = () => {
-      const newRow = new Array(headers.length).fill('');
-      const newRows = [...rows, newRow];
+  const handleConfirmAddRow = () => {
+      if (!addingRow) return;
+
+      const accountName = addingRow['Account Name']?.trim();
+      const symbol = addingRow['Symbol']?.trim();
+      const valueStr = addingRow['Current value']?.trim();
+
+      const newErrors = {};
+      let hasError = false;
+
+      if (!accountName) { newErrors['Account Name'] = true; hasError = true; }
+      if (!symbol) { newErrors['Symbol'] = true; hasError = true; }
+      if (!valueStr) { newErrors['Current value'] = true; hasError = true; }
+
+      if (valueStr) {
+        const numericValue = parseCurrency(valueStr);
+        if (numericValue < 0) {
+            newErrors['Current value'] = true;
+            hasError = true;
+        }
+      }
+
+      if (accountName && symbol) {
+        const accountIdx = columnIndices['Account Name'];
+        const symbolIdx = columnIndices['Symbol'];
+        
+        const isDuplicate = rows.some(row => 
+            row[accountIdx]?.trim() === accountName && 
+            row[symbolIdx]?.trim() === symbol
+        );
+
+        if (isDuplicate) {
+            newErrors['Account Name'] = true;
+            newErrors['Symbol'] = true;
+            hasError = true;
+        }
+      }
+
+      if (hasError) {
+          setAddingRowErrors(newErrors);
+          return;
+      }
+
+      // Create new row array matching headers order
+      // If we are in visual mode and somehow headers are different, we try to map.
+      // But usually this view forces the 3 columns or operates on existing headers.
+      // We will map to existing headers.
+      const newRowArr = headers.map(h => {
+          // Find matching key case-insensitive
+          const key = Object.keys(addingRow).find(k => k.toLowerCase() === h.toLowerCase());
+          return key ? addingRow[key] : '';
+      });
+
+      const newRows = [...rows, newRowArr];
+
+      // Sort
+      const accountIdx = columnIndices['Account Name'];
+      const symbolIdx = columnIndices['Symbol'];
+
+      if (accountIdx !== undefined && symbolIdx !== undefined) {
+          newRows.sort((a, b) => {
+                const accA = (a[accountIdx] || '').toLowerCase();
+                const accB = (b[accountIdx] || '').toLowerCase();
+                if (accA !== accB) return accA.localeCompare(accB);
+                const symA = (a[symbolIdx] || '').toLowerCase();
+                const symB = (b[symbolIdx] || '').toLowerCase();
+                return symA.localeCompare(symB);
+          });
+      }
+
+      // Find index of new row
+      const newIndex = newRows.findIndex(r => 
+          r[accountIdx] === accountName && r[symbolIdx] === symbol
+      );
+
       setRows(newRows);
       
       const newCsv = generateCsvString(headers, newRows);
       onUpdateCsv(newCsv);
       setRawText(newCsv);
+      setAddingRow(null);
+      setAddingRowErrors({});
+      
+      if (newIndex !== -1) {
+          setHighlightedRowIndex(newIndex);
+      }
+  };
+
+  const handleCancelAddRow = () => {
+      setAddingRow(null);
+      setAddingRowErrors({});
   };
 
   const handleRemoveRow = (rowIndex) => {
@@ -143,6 +354,20 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
       setRawText(newCsv);
   };
 
+  const handleApply = () => {
+      try {
+          const { newCsv, newMetadata, ignoredCount } = normalizeCsv(rawText, metadata);
+          onUpdateCsv(newCsv);
+          if (onUpdateMetadata) {
+              onUpdateMetadata(newMetadata);
+          }
+          setRawText(newCsv);
+          alert(`CSV data applied. ${ignoredCount} rows were ignored.`);
+      } catch (e) {
+          alert(e.message);
+      }
+  };
+
   const handleRawChange = (e) => {
       setRawText(e.target.value);
       onUpdateCsv(e.target.value);
@@ -150,6 +375,8 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
 
   const toggleMode = () => {
       setShowRaw(!showRaw);
+      setAddingRow(null);
+      setEditingCell(null);
   };
 
   if (!hasAllRequiredColumns && !showRaw && headers.length > 0) {
@@ -192,12 +419,13 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
       {showRaw ? (
           <div className="p-4">
               <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-100 text-xs text-gray-600">
-                  <p className="font-semibold mb-1">CSV Format Details:</p>
+                  <p className="font-semibold mb-1">How CSV Application Works:</p>
                   <ul className="list-disc list-inside space-y-1">
-                      <li>Standard CSV format with headers on the first line.</li>
-                      <li><strong>Fidelity Users:</strong> The "Positions" export works directly.</li>
-                      <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Current value</code>.</li>
-                      <li>Currency values can include '$' and ','.</li>
+                      <li><strong>Normalization:</strong> Standardizes data to 3 columns: <code>Account Name</code>, <code>Symbol</code>, and <code>Current value</code>.</li>
+                      <li><strong>Aggregation:</strong> Duplicate (Account + Symbol) rows are automatically summed together.</li>
+                      <li><strong>Metadata:</strong> If a <code>Description</code> column exists, non-empty values will update missing descriptions in your Symbol Metadata.</li>
+                      <li><strong>Validation:</strong> Aggregated values must be non-negative. Short positions are not supported.</li>
+                      <li><strong>Cleanup:</strong> Rows missing a Symbol are ignored. All other extra columns are discarded.</li>
                   </ul>
               </div>
               <AutoResizingTextarea
@@ -205,9 +433,17 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                 onChange={handleRawChange}
                 className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto min-h-[300px]"
               />
+              <div className="mt-3 flex justify-end">
+                  <button
+                    onClick={handleApply}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
+                  >
+                      <Check className="w-4 h-4" /> Apply & Normalize
+                  </button>
+              </div>
           </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
             <datalist id="account-suggestions">
                 {uniqueAccounts.map(a => <option key={a} value={a} />)}
             </datalist>
@@ -216,7 +452,7 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
             </datalist>
 
             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                     <tr>
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                             Account Name
@@ -227,12 +463,20 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Current value
                         </th>
-                        <th className="w-10"></th>
+                        <th className="w-20"></th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                     {rows.map((row, rowIndex) => (
-                        <tr key={rowIndex} className="hover:bg-gray-50">
+                        <tr 
+                            key={rowIndex} 
+                            ref={el => rowsRef.current[rowIndex] = el}
+                            className={`transition-colors duration-500 ${ 
+                                highlightedRowIndex === rowIndex 
+                                ? 'bg-blue-50' 
+                                : 'hover:bg-gray-50'
+                            }`}
+                        >
                             {requiredColumns.map(col => {
                                 const colIndex = columnIndices[col];
                                 const val = row[colIndex] || '';
@@ -240,21 +484,38 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                                 if (col === 'Account Name') listId = 'account-suggestions';
                                 if (col === 'Symbol') listId = 'symbol-suggestions';
 
-                                let widthClass = "";
-                                if (col === 'Account Name') widthClass = "w-1/3";
-                                if (col === 'Symbol') widthClass = "w-1/4";
+                                const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.colIndex === colIndex;
+                                const hasError = isEditing && editingCell.error;
 
                                 return (
-                                    <td key={`${rowIndex}-${col}`} className={`px-3 py-2 text-sm ${widthClass}`}>
-                                        <input 
-                                            type="text" 
-                                            value={val}
-                                            list={listId}
-                                            onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
-                                            onBlur={() => handleCellBlur(rowIndex, colIndex, col)}
-                                            className="w-full border-b border-transparent focus:border-blue-500 focus:outline-none bg-transparent"
-                                            placeholder={col}
-                                        />
+                                    <td 
+                                        key={`${rowIndex}-${col}`}
+                                        className={`px-3 py-2 text-sm ${!isEditing ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                                        onClick={() => !isEditing && !editingCell && handleStartEdit(rowIndex, colIndex, val)}
+                                    >
+                                        {isEditing ? (
+                                            <div className="flex items-center gap-1">
+                                                <input 
+                                                    type="text" 
+                                                    value={editingCell.tempValue}
+                                                    list={listId}
+                                                    onChange={(e) => handleEditChange(e.target.value)}
+                                                    onKeyDown={handleEditKeyDown}
+                                                    className={`w-full border rounded px-2 py-1 focus:outline-none text-xs ${ 
+                                                        hasError 
+                                                        ? 'bg-red-50 border-red-500 text-red-900 focus:ring-1 focus:ring-red-500' 
+                                                        : 'bg-white border-blue-400'
+                                                    }`}
+                                                    autoFocus
+                                                />
+                                                <div className="flex flex-col gap-0.5">
+                                                    <button onClick={handleSaveEdit} className="p-0.5 text-green-600 hover:bg-green-50 rounded"><Check className="w-3 h-3" /></button>
+                                                    <button onClick={handleCancelEdit} className="p-0.5 text-red-600 hover:bg-red-50 rounded"><X className="w-3 h-3" /></button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <span className="block w-full min-h-[20px]">{val}</span>
+                                        )}
                                     </td>
                                 );
                             })}
@@ -262,21 +523,77 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset }) {
                                 <button 
                                     onClick={() => handleRemoveRow(rowIndex)}
                                     className="text-gray-400 hover:text-red-500 p-1 rounded"
+                                    disabled={!!editingCell}
                                 >
                                     <Trash2 className="w-3 h-3" />
                                 </button>
                             </td>
                         </tr>
                     ))}
+                    {addingRow && (
+                        <tr className="bg-blue-50/30">
+                             {requiredColumns.map(col => {
+                                let listId = undefined;
+                                if (col === 'Account Name') listId = 'account-suggestions';
+                                if (col === 'Symbol') listId = 'symbol-suggestions';
+
+                                const hasError = addingRowErrors[col];
+
+                                return (
+                                    <td key={`new-${col}`} className="px-3 py-2 text-sm">
+                                        <input 
+                                            type="text" 
+                                            value={addingRow[col]}
+                                            list={listId}
+                                            onChange={(e) => handleAddingRowChange(col, e.target.value)}
+                                            onBlur={() => handleAddingRowBlur(col)}
+                                            className={`w-full border-b focus:outline-none px-1 py-0.5 rounded-sm ${ 
+                                                hasError
+                                                ? 'bg-red-50 border-red-500 text-red-900 focus:border-red-600' 
+                                                : 'bg-white border-blue-300 focus:border-blue-500'
+                                            }`}
+                                            placeholder={col}
+                                            autoFocus={col === 'Account Name'}
+                                        />
+                                    </td>
+                                );
+                            })}
+                            <td className="px-2 py-2 text-right">
+                                <div className="flex justify-end gap-1">
+                                    <button 
+                                        onClick={handleConfirmAddRow}
+                                        className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
+                                        title="Confirm"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                        onClick={handleCancelAddRow}
+                                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                                        title="Cancel"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
-            <div className="p-3 border-t border-gray-200 bg-gray-50">
-                <button 
-                    onClick={handleAddRow}
-                    className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
-                >
-                    <Plus className="w-3 h-3" /> Add Position Row
-                </button>
+            <div className="p-3 border-t border-gray-200 bg-gray-50 sticky bottom-0 z-10">
+                {!addingRow && (
+                    <button 
+                        onClick={handleStartAddRow}
+                        className={`text-xs flex items-center gap-1 font-medium ${ 
+                            editingCell 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-blue-600 hover:text-blue-700'
+                        }`}
+                        disabled={!!editingCell}
+                    >
+                        <Plus className="w-3 h-3" /> Add Position Row
+                    </button>
+                )}
             </div>
         </div>
       )}
