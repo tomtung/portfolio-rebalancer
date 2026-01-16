@@ -51,14 +51,17 @@ export const processData = (csvText) => {
 
     if (accountName === 'Waymo WMU') symbol = 'WMU';
     
-    // Ignore rows where either account name or symbol is missing
-    if (!accountName || !symbol) continue;
+    // Ignore rows where symbol is missing
+    if (!symbol) continue;
 
-    if (!processedAccounts[accountName]) {
-      processedAccounts[accountName] = { totalValue: 0, positions: {} };
+    // Default to "Unknown Account" if account name is missing but symbol exists
+    const effectiveAccountName = accountName || "Unknown Account";
+
+    if (!processedAccounts[effectiveAccountName]) {
+      processedAccounts[effectiveAccountName] = { totalValue: 0, positions: {} };
     }
 
-    const account = processedAccounts[accountName];
+    const account = processedAccounts[effectiveAccountName];
     account.totalValue += numericValue;
 
     if (!account.positions[symbol]) {
