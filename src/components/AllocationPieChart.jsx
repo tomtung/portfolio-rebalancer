@@ -112,6 +112,7 @@ const AllocationPieChart = ({ data, total, colors, details }) => {
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
             {sortedKeys.map((key) => {
               const value = data[key];
+              if (value <= 0) return null;
               const pct = total > 0 ? (value / total) * 100 : 0;
               const bgClass = colors[key].split(' ')[1]; 
               return (

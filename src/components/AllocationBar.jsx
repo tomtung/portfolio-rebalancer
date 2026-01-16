@@ -82,6 +82,7 @@ const AllocationBar = ({ label, data, total, colors, details, className = "" }) 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 mt-2">
         {sortedKeys.map((key) => {
           const value = data[key];
+          if (value <= 0) return null;
           const pct = total > 0 ? (value / total) * 100 : 0;
           const bgClass = colors[key] ? colors[key].split(' ')[1] : 'bg-gray-300';
           return (

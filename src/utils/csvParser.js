@@ -48,9 +48,7 @@ export const processData = (csvText) => {
     const rawValue = getValue(rowObj, 'Current value');
 
     const numericValue = parseCurrency(rawValue);
-    // Note: We intentionally skip 0 value rows from CSV to keep table clean, 
-    // but our new manual entries will bypass this check if they start at 0
-    if (numericValue === 0) continue;
+    // We used to skip 0 value rows, but now we keep them so users can make adjustments.
 
     if (accountName === 'Waymo WMU') symbol = 'WMU';
     if (!symbol) symbol = 'Unknown';

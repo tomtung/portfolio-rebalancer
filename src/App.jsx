@@ -14,14 +14,13 @@ import ConfirmModal from './components/ConfirmModal';
 import AutoResizingTextarea from './components/AutoResizingTextarea';
 import AllocationPieChart from './components/AllocationPieChart';
 import AccountTable from './components/AccountTable';
-import AddPositionForm from './components/AddPositionForm';
 import CategoryManager from './components/CategoryManager';
+import CsvManager from './components/CsvManager';
 
 export default function App() {
   const [rawData, setRawData] = usePersistentString('portfolio_csv_v1', INITIAL_CSV_DATA);
   const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v1', INITIAL_METADATA_JSON);
   const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v1', {}); 
-  const [newPositions, setNewPositions] = usePersistentObject('portfolio_pos_v1', {}); 
   const [error, setError] = useState(null);
   
   // Modal State
@@ -44,29 +43,11 @@ export default function App() {
     try { return JSON.parse(rawMetadata); } catch (e) { return {}; }
   }, [rawMetadata]);
 
-  // 2. Merge Manual Positions into Data Structure
+  // 2. Simplify mergedAccounts (No longer merging manual positions)
   const mergedAccounts = useMemo(() => {
-    // Deep copy to avoid mutating original
-    const merged = JSON.parse(JSON.stringify(parsedAccountsMap));
-
-    Object.entries(newPositions).forEach(([key, row]) => {
-       if (!merged[row.accountName]) {
-         merged[row.accountName] = { totalValue: 0, positions: {} };
-       }
-       
-       if (!merged[row.accountName].positions[row.Symbol]) {
-          merged[row.accountName].positions[row.Symbol] = {
-             Symbol: row.Symbol,
-             Description: "Manual Entry",
-             OriginalValue: 0,
-             isManual: true 
-          };
-       }
-    });
-    
     // Convert back to array for rendering
-    return Object.keys(merged).map(accountName => {
-        const accountData = merged[accountName];
+    return Object.keys(parsedAccountsMap).map(accountName => {
+        const accountData = parsedAccountsMap[accountName];
         const positionsArray = Object.values(accountData.positions)
           .sort((a, b) => b.OriginalValue - a.OriginalValue);
     
@@ -79,7 +60,7 @@ export default function App() {
           positions: positionsArray
         };
       }).filter(Boolean); // Filter out nulls
-  }, [parsedAccountsMap, newPositions]);
+  }, [parsedAccountsMap]);
 
   // Extract all unique symbols for the category manager
   const allSymbols = useMemo(() => {
@@ -134,45 +115,9 @@ export default function App() {
     });
   };
 
-  const handleAddPosition = (accountName, symbol, targetValue) => {
-     let originalValue = 0;
-     const accountInCsv = parsedAccountsMap[accountName];
-     if (accountInCsv && accountInCsv.positions[symbol]) {
-        originalValue = accountInCsv.positions[symbol].OriginalValue;
-     } else {
-        const key = `${accountName}-${symbol}`;
-        setNewPositions(prev => ({
-            ...prev,
-            [key]: { accountName, Symbol: symbol }
-        }));
-     }
-
-     const adjustment = targetValue - originalValue;
-     const key = `${accountName}-${symbol}`;
-     setAdjustments(prev => ({
-         ...prev,
-         [key]: adjustment
-     }));
-  };
-
-  const handleRemovePosition = (accountName, symbol) => {
-    const key = `${accountName}-${symbol}`;
-    setNewPositions(prev => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-    });
-    setAdjustments(prev => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-    });
-  };
-
   const confirmReset = () => {
       if (confirmAction === 'sim') {
           setAdjustments({});
-          setNewPositions({});
       } else if (confirmAction === 'csv') {
           setRawData(INITIAL_CSV_DATA);
       } else if (confirmAction === 'meta') {
@@ -182,7 +127,7 @@ export default function App() {
   };
 
   const getConfirmMessage = () => {
-      if (confirmAction === 'sim') return "Are you sure you want to clear all simulation adjustments and manually added positions?";
+      if (confirmAction === 'sim') return "Are you sure you want to clear all simulation adjustments?";
       if (confirmAction === 'csv') return "Are you sure you want to reset the CSV data to the default demo data? This will overwrite your changes.";
       if (confirmAction === 'meta') return "Are you sure you want to reset the category metadata to defaults? This will overwrite your changes.";
       return "";
@@ -213,7 +158,7 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-6">
-             {(Object.keys(adjustments).length > 0 || Object.keys(newPositions).length > 0) && (
+             {Object.keys(adjustments).length > 0 && (
                  <button 
                     onClick={() => setConfirmAction('sim')}
                     className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors"
@@ -236,42 +181,33 @@ export default function App() {
         {/* CSV & JSON Editors (Stacked) */}
         <div className="space-y-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <details>
-                <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                <FileText className="w-4 h-4" /> Edit Raw CSV Data
-                </summary>
-                <div className="mt-4">
-                <div className="mb-3 p-3 bg-gray-50 rounded border border-gray-100 text-xs text-gray-600">
-                    <p className="font-semibold mb-1">Expected Format:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                        <li>Standard CSV format with headers on the first line.</li>
-                        <li><strong>Fidelity Users:</strong> The "Positions" export works directly.</li>
-                        <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Description</code>, <code>Current value</code>.</li>
-                        <li>Non-required columns are ignored. Currency values can include '$' and ','.</li>
-                    </ul>
-                </div>
-                <div className="flex justify-between mb-2">
-                    <span className="text-xs text-gray-400">Paste your CSV export below</span>
-                    <button 
-                        onClick={() => setConfirmAction('csv')}
-                        className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                    >
-                        <RefreshCw className="w-3 h-3" /> Reset
-                    </button>
-                </div>
-                <AutoResizingTextarea
-                    value={rawData}
-                    onChange={(e) => setRawData(e.target.value)}
-                    className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto"
-                />
-                </div>
-            </details>
+                <details>
+                    <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
+                    <FileText className="w-4 h-4" /> Edit Portfolio Data
+                    </summary>
+                    <div className="mt-4">
+                        <div className="mb-4 p-3 bg-gray-50 rounded border border-gray-100 text-xs text-gray-600">
+                            <p className="font-semibold mb-1">CSV Format Details:</p>
+                            <ul className="list-disc list-inside space-y-1">
+                                <li>Standard CSV format with headers on the first line.</li>
+                                <li><strong>Fidelity Users:</strong> The "Positions" export works directly.</li>
+                                <li>Required columns: <code>Account Name</code>, <code>Symbol</code>, <code>Description</code>, <code>Current value</code>.</li>
+                                <li>Currency values can include '$' and ','.</li>
+                            </ul>
+                        </div>
+                        <CsvManager 
+                            csvData={rawData}
+                            onUpdateCsv={setRawData}
+                            onReset={() => setConfirmAction('csv')}
+                        />
+                    </div>
+                </details>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <details>
                     <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                        <Tag className="w-4 h-4" /> Manage Symbol Categories
+                        <Tag className="w-4 h-4" /> Edit Symbol Categories
                     </summary>
                     <div className="mt-4">
                         <CategoryManager 
@@ -318,15 +254,11 @@ export default function App() {
               totalAdjustment={account.totalAdjustment}
               portfolioTotal={totalPortfolioValue}
               onAdjustmentChange={handleAdjustmentChange}
-              onRemovePosition={handleRemovePosition}
               metadata={metadata}
               colors={globalColors}
             />
           ))
         )}
-
-        {/* Add Position Form at the bottom of tables */}
-        <AddPositionForm accounts={simulatedAccounts} onAddPosition={handleAddPosition} />
 
       </div>
     </div>
