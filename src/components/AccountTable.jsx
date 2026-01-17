@@ -4,7 +4,7 @@ import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateCategoryStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
-const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
+const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors, showAdjustment = true }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const [flashErrors, setFlashErrors] = useState({});
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
@@ -83,11 +83,11 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
         <div className="text-right">
           <div className="flex flex-col items-end">
              <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
-             {totalAdjustment !== 0 && (
+             {showAdjustment && totalAdjustment !== 0 && (
                 <div className="text-xs text-gray-400 line-through">{formatCurrency(originalTotalValue)}</div>
              )}
           </div>
-          {totalAdjustment !== 0 && (
+          {showAdjustment && totalAdjustment !== 0 && (
              <div className={`text-xs font-medium ${totalAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {totalAdjustment > 0 ? '+' : ''}{formatCurrency(totalAdjustment)}
              </div>
@@ -116,7 +116,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
               <HeaderCell label="Category" sortKey="Category" />
               <HeaderCell label="Dollar Value" sortKey="SimulatedValue" align="right" />
               <HeaderCell label="% of Account" sortKey="PercentOfAccount" align="right" />
-              <HeaderCell label="Adjustment" sortKey="adjustment" align="right" className="bg-blue-50 border-b border-blue-100 text-blue-600" />
+              {showAdjustment && <HeaderCell label="Adjustment" sortKey="adjustment" align="right" className="bg-blue-50 border-b border-blue-100 text-blue-600" />}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
@@ -156,13 +156,14 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                     </td>
                     <td className="whitespace-nowrap py-4 px-3 text-sm text-gray-900 text-right font-medium transition-all duration-300">
                        {formatCurrency(row.SimulatedValue)}
-                       {row.adjustment !== 0 && (
+                       {showAdjustment && row.adjustment !== 0 && (
                          <div className="text-xs text-gray-400 line-through">{formatCurrency(row.OriginalValue)}</div>
                        )}
                     </td>
                     <td className="whitespace-nowrap py-4 px-3 text-sm text-gray-600 text-right transition-all duration-300">
                         {formatPercent(row.PercentOfAccount)}
                     </td>
+                    {showAdjustment && (
                     <td className="whitespace-nowrap py-3 px-3 text-right bg-blue-50/30">
                       <div className="flex items-center justify-end gap-2">
                         <div className="relative inline-block w-28">
@@ -192,6 +193,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                         )}
                       </div>
                     </td>
+                    )}
                   </tr>
                 );
             })}

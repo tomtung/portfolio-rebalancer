@@ -22,6 +22,7 @@ export default function App() {
   const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v1', INITIAL_METADATA_JSON);
   const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v1', {}); 
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState('visualize');
   
   // Modal State
   const [confirmAction, setConfirmAction] = useState(null); // 'sim', 'csv', 'meta', null
@@ -73,11 +74,12 @@ export default function App() {
 
   // 3. Apply Adjustments
   const simulatedAccounts = useMemo(() => {
+    const currentAdjustments = activeTab === 'rebalance' ? adjustments : {};
     return mergedAccounts.map(account => {
       let accountTotalAdjustment = 0;
       const positionsWithAdjustments = account.positions.map(pos => {
         const key = `${account.name}-${pos.Symbol}`;
-        const adjustment = adjustments[key] || 0;
+        const adjustment = currentAdjustments[key] || 0;
         accountTotalAdjustment += adjustment;
         return {
           ...pos,
@@ -97,7 +99,7 @@ export default function App() {
         positions: finalPositions
       };
     });
-  }, [mergedAccounts, adjustments]);
+  }, [mergedAccounts, adjustments, activeTab]);
 
   const totalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.simulatedTotalValue, 0);
   const originalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.originalTotalValue, 0);
@@ -145,7 +147,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8 font-sans">
+    <div className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-500 ${activeTab === 'rebalance' ? 'bg-blue-100' : 'bg-slate-50'}`}>
       <div className="max-w-7xl mx-auto space-y-6"> 
         
         {/* Reset Modal */}
@@ -168,67 +170,79 @@ export default function App() {
               Visualize positions and simulate rebalancing.
             </p>
           </div>
-          <div className="flex items-center gap-6">
-             {Object.keys(adjustments).length > 0 && (
+          <div className="flex items-center gap-4">
+             {activeTab === 'rebalance' && Object.keys(adjustments).length > 0 && (
                  <button 
                     onClick={() => setConfirmAction('sim')}
                     className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors"
                  >
-                     <RefreshCw className="w-4 h-4" /> Reset Simulation
+                     <RefreshCw className="w-4 h-4" /> Reset
                  </button>
              )}
-             <div className="text-right">
-                <div className="flex flex-col items-end">
-                  <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPortfolioValue)}</div>
-                  {totalPortfolioAdjustment !== 0 && (
-                     <div className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</div>
-                  )}
-                </div>
-                {totalPortfolioAdjustment !== 0 && (
-                  <div className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)}
-                  </div>
-                )}
-                <div className="text-xs text-gray-400 uppercase tracking-wide">Portfolio Value</div>
+             
+             {/* Mode Switch */}
+             <div className="bg-gray-100 p-1 rounded-lg flex items-center border border-gray-200">
+                <button
+                    onClick={() => setActiveTab('visualize')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                        activeTab === 'visualize' 
+                        ? 'bg-white text-blue-600 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Visualize
+                </button>
+                <button
+                    onClick={() => setActiveTab('rebalance')}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                        activeTab === 'rebalance' 
+                        ? 'bg-white text-blue-600 shadow-sm' 
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                    Rebalance
+                </button>
              </div>
           </div>
         </div>
 
-        {/* CSV & JSON Editors (Stacked) */}
-        <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <details>
-                    <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                    <FileText className="w-4 h-4" /> Edit Portfolio Data
-                    </summary>
-                    <div className="mt-4">
-                        <CsvManager 
-                            csvData={rawData}
-                            onUpdateCsv={setRawData}
-                            onReset={() => setConfirmAction('csv')}
-                            metadata={metadata}
-                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                        />
-                    </div>
-                </details>
-            </div>
+        {/* CSV & JSON Editors (Stacked) - Only in Visualize */}
+        {activeTab === 'visualize' && (
+            <div className="space-y-4">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <details>
+                        <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
+                        <FileText className="w-4 h-4" /> Edit Portfolio Data
+                        </summary>
+                        <div className="mt-4">
+                            <CsvManager 
+                                csvData={rawData}
+                                onUpdateCsv={setRawData}
+                                onReset={() => setConfirmAction('csv')}
+                                metadata={metadata}
+                                onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+                            />
+                        </div>
+                    </details>
+                </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <details>
-                    <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                        <Tag className="w-4 h-4" /> Edit Symbol Metadata
-                    </summary>
-                    <div className="mt-4">
-                        <MetadataManager 
-                            symbols={allSymbols} 
-                            metadata={metadata} 
-                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                            onReset={() => setConfirmAction('meta')}
-                        />
-                    </div>
-                </details>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <details>
+                        <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
+                            <Tag className="w-4 h-4" /> Edit Symbol Metadata
+                        </summary>
+                        <div className="mt-4">
+                            <MetadataManager 
+                                symbols={allSymbols} 
+                                metadata={metadata} 
+                                onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+                                onReset={() => setConfirmAction('meta')}
+                            />
+                        </div>
+                    </details>
+                </div>
             </div>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700 flex items-center gap-2">
@@ -238,13 +252,37 @@ export default function App() {
         )}
 
         {simulatedAccounts.length > 0 && (
-            <div className="grid grid-cols-1 gap-4">
-                <AllocationPieChart 
-                  data={categories} 
-                  total={totalPortfolioValue} 
-                  colors={globalColors} 
-                  details={categoryDetails}
-                />
+            <div className="space-y-4">
+                {/* Portfolio Value Summary */}
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-lg font-bold text-gray-800">Portfolio Allocation</h2>
+                        <span className="text-sm text-gray-500">Total Asset Breakdown</span>
+                    </div>
+                    <div className="text-right">
+                        <div className="flex flex-col items-end">
+                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPortfolioValue)}</div>
+                            {totalPortfolioAdjustment !== 0 && (
+                                <div className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</div>
+                            )}
+                        </div>
+                        {totalPortfolioAdjustment !== 0 && (
+                            <div className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)}
+                            </div>
+                        )}
+                        <div className="text-xs text-gray-400 uppercase tracking-wide">Total Value</div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <AllocationPieChart 
+                      data={categories} 
+                      total={totalPortfolioValue} 
+                      colors={globalColors} 
+                      details={categoryDetails}
+                    />
+                </div>
             </div>
         )}
 
@@ -266,6 +304,7 @@ export default function App() {
               onAdjustmentChange={handleAdjustmentChange}
               metadata={metadata}
               colors={globalColors}
+              showAdjustment={activeTab === 'rebalance'}
             />
           ))
         )}
