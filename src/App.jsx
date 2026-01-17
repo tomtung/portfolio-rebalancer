@@ -178,10 +178,10 @@ export default function App() {
               <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
                 <PieChart className="w-8 h-8 text-white" />
               </div>
-              Portfolio Allocator
+              Portfolio Rebalance Helper
             </h1>
-            <p className="text-gray-400 text-sm mt-2 font-medium tracking-wide uppercase">
-              Professional Asset Management & Simulation
+            <p className="text-gray-500 text-sm mt-2 font-medium tracking-wide uppercase">
+              Local in-browser asset allocation simulation
             </p>
           </div>
           <div className="flex items-center gap-4">
