@@ -6,8 +6,22 @@ import AllocationBar from './AllocationBar';
 
 const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
+  const [flashErrors, setFlashErrors] = useState({});
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
   const accountStats = useMemo(() => calculateCategoryStats(positions, metadata), [positions, metadata]);
+
+  const handleLocalAdjustment = (symbol, value, originalValue) => {
+      const num = parseFloat(value);
+      if (!isNaN(num) && originalValue + num < 0) {
+          setFlashErrors(prev => ({ ...prev, [symbol]: true }));
+          setTimeout(() => {
+              setFlashErrors(prev => ({ ...prev, [symbol]: false }));
+          }, 800);
+          onAdjustmentChange(name, symbol, -originalValue);
+      } else {
+          onAdjustmentChange(name, symbol, value);
+      }
+  };
 
   const sortedPositions = useMemo(() => {
     let sortableItems = [...positions];
@@ -156,11 +170,15 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                           <input
                             type="number"
                             placeholder="0"
-                            className={`w-full pl-6 pr-2 py-1.5 text-right text-sm border rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-colors ${ 
-                              row.adjustment !== 0 ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' : 'border-gray-300 bg-white text-gray-700'
+                            className={`w-full pl-6 pr-2 py-1.5 text-right text-sm border rounded-md focus:ring-2 focus:ring-blue-500 outline-none transition-colors duration-500 ${ 
+                              flashErrors[row.Symbol] 
+                              ? 'bg-red-100 border-red-500 text-red-900' 
+                              : row.adjustment !== 0 
+                                ? 'border-blue-300 bg-blue-50 text-blue-700 font-medium' 
+                                : 'border-gray-300 bg-white text-gray-700'
                             }`}
                             value={row.adjustment === 0 ? '' : row.adjustment}
-                            onChange={(e) => onAdjustmentChange(name, row.Symbol, e.target.value)}
+                            onChange={(e) => handleLocalAdjustment(row.Symbol, e.target.value, row.OriginalValue)}
                           />
                         </div>
                         {row.isManual && (

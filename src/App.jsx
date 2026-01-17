@@ -107,7 +107,7 @@ export default function App() {
 
   const handleAdjustmentChange = (accountName, symbol, value) => {
     const key = `${accountName}-${symbol}`;
-    const numValue = parseFloat(value);
+    let numValue = parseFloat(value);
 
     // Find original value to validate
     const account = mergedAccounts.find(a => a.name === accountName);
@@ -115,8 +115,7 @@ export default function App() {
     const originalValue = position?.OriginalValue || 0;
 
     if (!isNaN(numValue) && (originalValue + numValue < 0)) {
-        alert("Resulting value cannot be negative.");
-        return;
+        numValue = -originalValue;
     }
 
     setAdjustments(prev => {
