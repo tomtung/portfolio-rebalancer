@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { sortCategoriesByValue } from '../utils/calculations';
 import { formatCurrency, formatPercent } from '../utils/currency';
 
-const AllocationPieChart = ({ data, total, colors, details }) => {
+const AllocationPieChart = ({ data, total, colors, details, headerContent }) => {
   const [tooltip, setTooltip] = useState(null);
   const sortedKeys = useMemo(() => sortCategoriesByValue(data), [data]);
   
@@ -68,7 +68,7 @@ const AllocationPieChart = ({ data, total, colors, details }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-8 relative">
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 relative">
       {tooltip && (
           <div 
             className="fixed z-50 bg-white shadow-xl rounded-lg border border-gray-200 p-3 min-w-[180px] pointer-events-none"
@@ -91,41 +91,48 @@ const AllocationPieChart = ({ data, total, colors, details }) => {
           </div>
       )}
 
-      <div className="relative w-64 h-64 flex-shrink-0">
-        <svg viewBox="-105 -105 210 210" className="w-full h-full transform -rotate-90">
-          {slices.map((slice) => (
-            <path 
-              key={slice.key} 
-              d={slice.pathData} 
-              className={`${slice.color} hover:opacity-80 transition-opacity cursor-pointer stroke-white stroke-[1px]`} 
-              onMouseEnter={(e) => handleMouseEnter(e, slice)}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              onClick={(e) => updateTooltip(e, slice)}
-            />
-          ))}
-        </svg>
-      </div>
+      {headerContent && (
+        <div className="mb-6 pb-6 border-b border-gray-100">
+          {headerContent}
+        </div>
+      )}
 
-      <div className="flex-grow">
-         <h3 className="text-lg font-semibold text-gray-800 mb-4">Portfolio Allocation</h3>
-         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-            {sortedKeys.map((key) => {
-              const value = data[key];
-              if (value <= 0) return null;
-              const pct = total > 0 ? (value / total) * 100 : 0;
-              const bgClass = colors[key].split(' ')[1]; 
-              return (
-                <div key={key} className="flex justify-between items-center text-xs group">
-                  <div className="flex items-center gap-2 flex-grow min-w-0">
-                    <div className={`${bgClass} w-3 h-3 rounded-full flex-shrink-0`} />
-                    <span className="text-gray-600 truncate" title={key}>{key}</span>
-                  </div>
-                  <span className="font-medium text-gray-900 ml-3 flex-shrink-0">{formatPercent(pct)}</span>
-                </div>
-              );
-            })}
-          </div>
+      <div className="flex flex-col md:flex-row items-center gap-8">
+        <div className="relative w-64 h-64 flex-shrink-0">
+            <svg viewBox="-105 -105 210 210" className="w-full h-full transform -rotate-90">
+            {slices.map((slice) => (
+                <path 
+                key={slice.key} 
+                d={slice.pathData} 
+                className={`${slice.color} hover:opacity-80 transition-opacity cursor-pointer stroke-white stroke-[1px]`} 
+                onMouseEnter={(e) => handleMouseEnter(e, slice)}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                onClick={(e) => updateTooltip(e, slice)}
+                />
+            ))}
+            </svg>
+        </div>
+
+        <div className="flex-grow w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                {sortedKeys.map((key) => {
+                const value = data[key];
+                if (value <= 0) return null;
+                const pct = total > 0 ? (value / total) * 100 : 0;
+                const bgClass = colors[key].split(' ')[1]; 
+                return (
+                    <div key={key} className="flex justify-between items-center text-xs group">
+                    <div className="flex items-center gap-2 flex-grow min-w-0">
+                        <div className={`${bgClass} w-3 h-3 rounded-full flex-shrink-0`} />
+                        <span className="text-gray-600 truncate" title={key}>{key}</span>
+                    </div>
+                    <span className="font-medium text-gray-900 ml-3 flex-shrink-0">{formatPercent(pct)}</span>
+                    </div>
+                );
+                })}
+            </div>
+        </div>
       </div>
     </div>
   );

@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown, Trash2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Trash2, RefreshCw } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateCategoryStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
-const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, metadata, colors, showAdjustment = true }) => {
+const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, onResetAccount, metadata, colors, showAdjustment = true }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const [flashErrors, setFlashErrors] = useState({});
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
@@ -80,21 +80,27 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
           <h2 className="text-lg font-bold text-gray-800">{name}</h2>
           <span className="text-sm text-gray-500">{positions.length} Positions</span>
         </div>
-        <div className="text-right">
-          <div className="flex flex-col items-end">
-             <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
-             {showAdjustment && totalAdjustment !== 0 && (
-                <div className="text-xs text-gray-400 line-through">{formatCurrency(originalTotalValue)}</div>
-             )}
-          </div>
+        <div className="text-right flex flex-col items-end">
+          <div className="text-lg font-bold text-gray-900">{formatCurrency(totalValue)}</div>
           {showAdjustment && totalAdjustment !== 0 && (
-             <div className={`text-xs font-medium ${totalAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {totalAdjustment > 0 ? '+' : ''}{formatCurrency(totalAdjustment)}
+             <div className="flex items-center gap-1 text-xs">
+                <span className="text-gray-400 line-through">{formatCurrency(originalTotalValue)}</span>
+                <span className={`font-medium ${totalAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                   ({totalAdjustment > 0 ? '+' : ''}{formatCurrency(totalAdjustment)})
+                </span>
              </div>
           )}
-          <div className="text-xs text-gray-500 font-medium">
+          <div className="text-xs text-gray-500 font-medium mt-1">
              {formatPercent(percentOfPortfolio)} of Portfolio
           </div>
+          {showAdjustment && totalAdjustment !== 0 && (
+              <button 
+                onClick={() => onResetAccount && onResetAccount(name)}
+                className="mt-1 text-[10px] flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded transition-colors"
+              >
+                  <RefreshCw className="w-3 h-3" /> Reset Adjustments
+              </button>
+          )}
         </div>
       </div>
 
@@ -155,10 +161,12 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                       )}
                     </td>
                     <td className="whitespace-nowrap py-4 px-3 text-sm text-gray-900 text-right font-medium transition-all duration-300">
-                       {formatCurrency(row.SimulatedValue)}
-                       {showAdjustment && row.adjustment !== 0 && (
-                         <div className="text-xs text-gray-400 line-through">{formatCurrency(row.OriginalValue)}</div>
-                       )}
+                       <div className="flex flex-col items-end">
+                           <span>{formatCurrency(row.SimulatedValue)}</span>
+                           {showAdjustment && row.adjustment !== 0 && (
+                             <span className="text-xs text-gray-400 line-through">{formatCurrency(row.OriginalValue)}</span>
+                           )}
+                       </div>
                     </td>
                     <td className="whitespace-nowrap py-4 px-3 text-sm text-gray-600 text-right transition-all duration-300">
                         {formatPercent(row.PercentOfAccount)}

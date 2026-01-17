@@ -128,6 +128,18 @@ export default function App() {
     });
   };
 
+  const handleResetAccount = (accountName) => {
+      setAdjustments(prev => {
+          const next = { ...prev };
+          Object.keys(next).forEach(key => {
+              if (key.startsWith(`${accountName}-`)) {
+                  delete next[key];
+              }
+          });
+          return next;
+      });
+  };
+
   const confirmReset = () => {
       if (confirmAction === 'sim') {
           setAdjustments({});
@@ -171,15 +183,6 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-4">
-             {activeTab === 'rebalance' && Object.keys(adjustments).length > 0 && (
-                 <button 
-                    onClick={() => setConfirmAction('sim')}
-                    className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-md transition-colors"
-                 >
-                     <RefreshCw className="w-4 h-4" /> Reset
-                 </button>
-             )}
-             
              {/* Mode Switch */}
              <div className="bg-gray-100 p-1 rounded-lg flex items-center border border-gray-200">
                 <button
@@ -252,37 +255,43 @@ export default function App() {
         )}
 
         {simulatedAccounts.length > 0 && (
-            <div className="space-y-4">
-                {/* Portfolio Value Summary */}
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex justify-between items-center">
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-800">Portfolio Allocation</h2>
-                        <span className="text-sm text-gray-500">Total Asset Breakdown</span>
-                    </div>
-                    <div className="text-right">
-                        <div className="flex flex-col items-end">
-                            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPortfolioValue)}</div>
-                            {totalPortfolioAdjustment !== 0 && (
-                                <div className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</div>
+            <div className="grid grid-cols-1 gap-4">
+                <AllocationPieChart 
+                  data={categories} 
+                  total={totalPortfolioValue} 
+                  colors={globalColors} 
+                  details={categoryDetails}
+                  headerContent={
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Portfolio Allocation</h2>
+                            <span className="text-sm text-gray-500">Total Asset Breakdown</span>
+                        </div>
+                        <div className="text-right flex flex-col items-end">
+                            <div className="text-2xl font-bold text-gray-900 leading-tight">{formatCurrency(totalPortfolioValue)}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                                {totalPortfolioAdjustment !== 0 && (
+                                    <>
+                                        <span className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</span>
+                                        <span className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                            ({totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)})
+                                        </span>
+                                    </>
+                                )}
+                            </div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Total Portfolio Value</div>
+                            {activeTab === 'rebalance' && Object.keys(adjustments).length > 0 && (
+                                <button 
+                                    onClick={() => setConfirmAction('sim')}
+                                    className="mt-2 text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                                >
+                                    <RefreshCw className="w-3 h-3" /> Reset Adjustments
+                                </button>
                             )}
                         </div>
-                        {totalPortfolioAdjustment !== 0 && (
-                            <div className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)}
-                            </div>
-                        )}
-                        <div className="text-xs text-gray-400 uppercase tracking-wide">Total Value</div>
                     </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4">
-                    <AllocationPieChart 
-                      data={categories} 
-                      total={totalPortfolioValue} 
-                      colors={globalColors} 
-                      details={categoryDetails}
-                    />
-                </div>
+                  }
+                />
             </div>
         )}
 
@@ -302,6 +311,7 @@ export default function App() {
               totalAdjustment={account.totalAdjustment}
               portfolioTotal={totalPortfolioValue}
               onAdjustmentChange={handleAdjustmentChange}
+              onResetAccount={handleResetAccount}
               metadata={metadata}
               colors={globalColors}
               showAdjustment={activeTab === 'rebalance'}
