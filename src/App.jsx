@@ -159,8 +159,8 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen p-4 md:p-8 font-sans transition-colors duration-500 ${activeTab === 'rebalance' ? 'bg-blue-100' : 'bg-slate-50'}`}>
-      <div className="max-w-7xl mx-auto space-y-6"> 
+    <div className={`min-h-screen p-4 md:p-12 font-sans transition-colors duration-700 ${activeTab === 'rebalance' ? 'bg-[#f0f4f8]' : 'bg-[#fcfcfd]'}`}>
+      <div className="max-w-7xl mx-auto space-y-10"> 
         
         {/* Reset Modal */}
         <ConfirmModal 
@@ -172,24 +172,26 @@ export default function App() {
         />
 
         {/* Header */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-10 opacity-95 backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <PieChart className="w-6 h-6 text-blue-600" />
+            <h1 className="text-4xl font-bold text-gray-900 flex items-center gap-3 tracking-tight">
+              <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
+                <PieChart className="w-8 h-8 text-white" />
+              </div>
               Portfolio Allocator
             </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Visualize positions and simulate rebalancing.
+            <p className="text-gray-400 text-sm mt-2 font-medium tracking-wide uppercase">
+              Professional Asset Management & Simulation
             </p>
           </div>
           <div className="flex items-center gap-4">
-             {/* Mode Switch */}
-             <div className="bg-gray-100 p-1 rounded-lg flex items-center border border-gray-200">
+             {/* Mode Switch - High Class Version */}
+             <div className="bg-gray-200/50 p-1.5 rounded-full flex items-center backdrop-blur-sm border border-white/50 shadow-inner">
                 <button
                     onClick={() => setActiveTab('visualize')}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${
                         activeTab === 'visualize' 
-                        ? 'bg-white text-blue-600 shadow-sm' 
+                        ? 'bg-white text-blue-600 shadow-md scale-105' 
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
@@ -197,9 +199,9 @@ export default function App() {
                 </button>
                 <button
                     onClick={() => setActiveTab('rebalance')}
-                    className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${
                         activeTab === 'rebalance' 
-                        ? 'bg-white text-blue-600 shadow-sm' 
+                        ? 'bg-white text-blue-600 shadow-md scale-105' 
                         : 'text-gray-500 hover:text-gray-700'
                     }`}
                 >
@@ -209,15 +211,28 @@ export default function App() {
           </div>
         </div>
 
-        {/* CSV & JSON Editors (Stacked) - Only in Visualize */}
+        {error && (
+          <div className="bg-red-50/80 backdrop-blur-sm border-l-4 border-red-500 p-4 text-red-700 flex items-center gap-2 rounded-r-lg shadow-sm">
+            <AlertCircle className="w-5 h-5" />
+            <p className="font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* CSV & JSON Editors (Stacked) - Only in Visualize - NOW ABOVE CHART */}
         {activeTab === 'visualize' && (
-            <div className="space-y-4">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <details>
-                        <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                        <FileText className="w-4 h-4" /> Edit Portfolio Data
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-500">
+                    <details className="group">
+                        <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                                    <FileText className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
+                                </div>
+                                <span>Portfolio Data (CSV)</span>
+                            </div>
+                            <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
                         </summary>
-                        <div className="mt-4">
+                        <div className="mt-6 pt-6 border-t border-gray-50">
                             <CsvManager 
                                 csvData={rawData}
                                 onUpdateCsv={setRawData}
@@ -229,12 +244,18 @@ export default function App() {
                     </details>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                    <details>
-                        <summary className="cursor-pointer text-sm font-medium text-gray-500 hover:text-gray-700 select-none flex items-center gap-2">
-                            <Tag className="w-4 h-4" /> Edit Symbol Metadata
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-500">
+                    <details className="group">
+                        <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                                    <Tag className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
+                                </div>
+                                <span>Symbol Metadata (JSON)</span>
+                            </div>
+                            <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
                         </summary>
-                        <div className="mt-4">
+                        <div className="mt-6 pt-6 border-t border-gray-50">
                             <MetadataManager 
                                 symbols={allSymbols} 
                                 metadata={metadata} 
@@ -247,13 +268,6 @@ export default function App() {
             </div>
         )}
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            <p>{error}</p>
-          </div>
-        )}
-
         {simulatedAccounts.length > 0 && (
             <div className="grid grid-cols-1 gap-4">
                 <AllocationPieChart 
@@ -264,26 +278,26 @@ export default function App() {
                   headerContent={
                     <div className="flex justify-between items-start">
                         <div>
-                            <h2 className="text-lg font-bold text-gray-800">Portfolio Allocation</h2>
-                            <span className="text-sm text-gray-500">Total Asset Breakdown</span>
+                            <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Portfolio Allocation</h2>
+                            <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Total Asset Breakdown</span>
                         </div>
                         <div className="text-right flex flex-col items-end">
-                            <div className="text-2xl font-bold text-gray-900 leading-tight">{formatCurrency(totalPortfolioValue)}</div>
-                            <div className="flex items-center gap-2 mt-1">
+                            <div className="text-3xl font-bold text-gray-900 leading-tight tracking-tighter">{formatCurrency(totalPortfolioValue)}</div>
+                            <div className="flex items-center gap-3 mt-1">
                                 {totalPortfolioAdjustment !== 0 && (
                                     <>
-                                        <span className="text-sm text-gray-400 line-through">{formatCurrency(originalPortfolioValue)}</span>
-                                        <span className={`text-sm font-medium ${totalPortfolioAdjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            ({totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)})
-                                        </span>
+                                        <span className="text-sm text-gray-400 line-through font-medium">{formatCurrency(originalPortfolioValue)}</span>
+                                        <div className={`px-2 py-0.5 rounded-full text-xs font-bold ${totalPortfolioAdjustment > 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                                            {totalPortfolioAdjustment > 0 ? '+' : ''}{formatCurrency(totalPortfolioAdjustment)}
+                                        </div>
                                     </>
                                 )}
                             </div>
-                            <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mt-1">Total Portfolio Value</div>
+                            <div className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-2">Total Portfolio Value</div>
                             {activeTab === 'rebalance' && Object.keys(adjustments).length > 0 && (
                                 <button 
                                     onClick={() => setConfirmAction('sim')}
-                                    className="mt-2 text-xs flex items-center gap-1 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                                    className="mt-4 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-red-500 hover:text-red-600 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 rounded-full border border-red-100 transition-all duration-300"
                                 >
                                     <RefreshCw className="w-3 h-3" /> Reset Adjustments
                                 </button>
@@ -295,29 +309,31 @@ export default function App() {
             </div>
         )}
 
-        {simulatedAccounts.length === 0 && !error ? (
-          <div className="flex flex-col items-center justify-center p-12 text-gray-500 bg-white rounded-lg border border-gray-200">
-             <AlertCircle className="w-10 h-10 mb-3 opacity-20" />
-             <p>No valid positions found. Check your data.</p>
-          </div>
-        ) : (
-          simulatedAccounts.map(account => (
-            <AccountTable 
-              key={account.name} 
-              name={account.name} 
-              positions={account.positions} 
-              totalValue={account.simulatedTotalValue}
-              originalTotalValue={account.originalTotalValue}
-              totalAdjustment={account.totalAdjustment}
-              portfolioTotal={totalPortfolioValue}
-              onAdjustmentChange={handleAdjustmentChange}
-              onResetAccount={handleResetAccount}
-              metadata={metadata}
-              colors={globalColors}
-              showAdjustment={activeTab === 'rebalance'}
-            />
-          ))
-        )}
+        <div className="space-y-8">
+            {simulatedAccounts.length === 0 && !error ? (
+            <div className="flex flex-col items-center justify-center p-20 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                <AlertCircle className="w-12 h-12 mb-4 opacity-10" />
+                <p className="font-medium tracking-wide uppercase text-xs">No active positions detected</p>
+            </div>
+            ) : (
+            simulatedAccounts.map(account => (
+                <AccountTable 
+                key={account.name} 
+                name={account.name} 
+                positions={account.positions} 
+                totalValue={account.simulatedTotalValue}
+                originalTotalValue={account.originalTotalValue}
+                totalAdjustment={account.totalAdjustment}
+                portfolioTotal={totalPortfolioValue}
+                onAdjustmentChange={handleAdjustmentChange}
+                onResetAccount={handleResetAccount}
+                metadata={metadata}
+                colors={globalColors}
+                showAdjustment={activeTab === 'rebalance'}
+                />
+            ))
+            )}
+        </div>
 
       </div>
     </div>
