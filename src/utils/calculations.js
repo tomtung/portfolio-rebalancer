@@ -124,9 +124,12 @@ export const sortCategoriesByValue = (data) => {
     const topA = a.split(' / ')[0];
     const topB = b.split(' / ')[0];
 
+    // Primary sort: Top-level category total value (Descending)
     if (topA !== topB) {
       return topLevelTotals[topB] - topLevelTotals[topA];
     }
-    return data[b] - data[a];
+    
+    // Secondary sort: Subcategory name (Alphabetical Ascending)
+    return a.localeCompare(b);
   });
 };
