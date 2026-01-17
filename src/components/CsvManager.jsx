@@ -252,6 +252,11 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
       }
   };
 
+  const handleAddingRowKeyDown = (e) => {
+      if (e.key === 'Enter') handleConfirmAddRow();
+      if (e.key === 'Escape') handleCancelAddRow();
+  };
+
   const handleConfirmAddRow = () => {
       if (!addingRow) return;
 
@@ -546,6 +551,7 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
                                             value={addingRow[col]}
                                             list={listId}
                                             onChange={(e) => handleAddingRowChange(col, e.target.value)}
+                                            onKeyDown={handleAddingRowKeyDown}
                                             onBlur={() => handleAddingRowBlur(col)}
                                             className={`w-full border-b focus:outline-none px-1 py-0.5 rounded-sm ${ 
                                                 hasError
