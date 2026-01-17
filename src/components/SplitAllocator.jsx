@@ -2,23 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 
 export default function SplitAllocator({ value, onChange, existingCategories }) {
-  const [rows, setRows] = useState([]);
-
-  // Initialize rows from value object
-  useEffect(() => {
-    if (value && typeof value === 'object') {
-      const initialRows = Object.entries(value).map(([cat, ratio]) => ({
+  const parseRowsFromValue = (val) => {
+    if (val && typeof val === 'object') {
+      const initialRows = Object.entries(val).map(([cat, ratio]) => ({
         category: cat,
         percent: Math.round(ratio * 100)
       }));
       if (initialRows.length === 0) {
           initialRows.push({ category: '', percent: 100 });
       }
-      setRows(initialRows);
-    } else {
-      setRows([{ category: '', percent: 100 }]);
+      return initialRows;
     }
-  }, [value]);
+    return [{ category: '', percent: 100 }];
+  };
+
+  const [rows, setRows] = useState(() => parseRowsFromValue(value));
 
   const updateRow = (index, field, val) => {
     const newRows = [...rows];
@@ -42,7 +40,6 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
   const emitChange = (currentRows) => {
     // Convert back to object format: { "Cat": 0.5 }
     const newValue = {};
-    let isValid = true;
     
     currentRows.forEach(row => {
         if (!row.category.trim()) return; // Skip empty categories
