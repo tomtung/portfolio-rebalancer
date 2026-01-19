@@ -151,7 +151,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                       {isSplit ? (
                         <div className="flex flex-wrap gap-1.5">
                           {Object.entries(assetClassLabelVal).sort((a,b) => b[1] - a[1]).map(([cat, ratio]) => (
-                            <span key={cat} className="inline-flex items-center text-[9px] font-bold uppercase tracking-tighter bg-indigo-50/50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100/50">
+                            <span key={cat} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-slate-50 text-gray-600 border-slate-200">
                               {cat} {Math.round(ratio * 100)}%
                             </span>
                           ))}
