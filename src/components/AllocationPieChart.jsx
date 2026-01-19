@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { sortCategoriesByValue } from '../utils/calculations';
+import { sortAssetClassesByValue } from '../utils/calculations';
 import { formatCurrency, formatPercent } from '../utils/currency';
 
 const AllocationPieChart = ({ data, total, colors, details, headerContent }) => {
   const [tooltip, setTooltip] = useState(null);
-  const sortedKeys = useMemo(() => sortCategoriesByValue(data), [data]);
+  const sortedKeys = useMemo(() => sortAssetClassesByValue(data), [data]);
   
   let cumulativePercent = 0;
   

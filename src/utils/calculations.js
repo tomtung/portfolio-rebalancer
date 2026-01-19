@@ -1,31 +1,31 @@
-export const getCategoryRatios = (symbol, metadata) => {
+export const getAssetClassRatios = (symbol, metadata) => {
   const rawMeta = metadata[symbol];
   if (!rawMeta) return { "Unknown": 1.0 }; 
   
-  let categoryData;
+  let assetClassData;
   if (typeof rawMeta === 'object' && rawMeta !== null) {
-      if ('category' in rawMeta) {
-          categoryData = rawMeta.category;
+      if ('assetClass' in rawMeta) {
+          assetClassData = rawMeta.assetClass;
       } else if ('description' in rawMeta) {
-          // New structure but missing category key altogether
-          categoryData = "Unknown";
+          // New structure but missing assetClass key altogether
+          assetClassData = "Unknown";
       } else {
           // Assume old split format: { "Cat A": 0.5, "Cat B": 0.5 }
-          categoryData = rawMeta;
+          assetClassData = rawMeta;
       }
   } else {
-      categoryData = rawMeta;
+      assetClassData = rawMeta;
   }
 
-  if (!categoryData || (typeof categoryData === 'object' && Object.keys(categoryData).length === 0)) {
+  if (!assetClassData || (typeof assetClassData === 'object' && Object.keys(assetClassData).length === 0)) {
       return { "Unknown": 1.0 };
   }
 
-  if (typeof categoryData === 'string') return { [categoryData.trim() || "Unknown"]: 1.0 };
+  if (typeof assetClassData === 'string') return { [assetClassData.trim() || "Unknown"]: 1.0 };
   
   // For split allocations, ensure no empty keys
   const sanitized = {};
-  Object.entries(categoryData).forEach(([k, v]) => {
+  Object.entries(assetClassData).forEach(([k, v]) => {
       sanitized[k.trim() || "Unknown"] = v;
   });
   
@@ -33,85 +33,85 @@ export const getCategoryRatios = (symbol, metadata) => {
   return sanitized;
 };
 
-export const calculateCategoryStats = (positions, metadata) => {
-  const categories = {};
-  const categoryDetails = {}; 
+export const calculateAssetClassStats = (positions, metadata) => {
+  const assetClasses = {};
+  const assetClassDetails = {}; 
   let totalValue = 0;
   
   positions.forEach(pos => {
       totalValue += pos.SimulatedValue;
-      const ratios = getCategoryRatios(pos.Symbol, metadata);
+      const ratios = getAssetClassRatios(pos.Symbol, metadata);
       
-      Object.entries(ratios).forEach(([category, ratio]) => {
+      Object.entries(ratios).forEach(([assetClass, ratio]) => {
           const contributedValue = pos.SimulatedValue * ratio;
-          categories[category] = (categories[category] || 0) + contributedValue;
+          assetClasses[assetClass] = (assetClasses[assetClass] || 0) + contributedValue;
 
-          if (!categoryDetails[category]) {
-              categoryDetails[category] = { total: 0, symbolMap: {} };
+          if (!assetClassDetails[assetClass]) {
+              assetClassDetails[assetClass] = { total: 0, symbolMap: {} };
           }
-          categoryDetails[category].total += contributedValue;
+          assetClassDetails[assetClass].total += contributedValue;
           
-          if (!categoryDetails[category].symbolMap[pos.Symbol]) {
-              categoryDetails[category].symbolMap[pos.Symbol] = 0;
+          if (!assetClassDetails[assetClass].symbolMap[pos.Symbol]) {
+              assetClassDetails[assetClass].symbolMap[pos.Symbol] = 0;
           }
-          categoryDetails[category].symbolMap[pos.Symbol] += contributedValue;
+          assetClassDetails[assetClass].symbolMap[pos.Symbol] += contributedValue;
       });
   });
 
-  Object.keys(categoryDetails).forEach(cat => {
-      const map = categoryDetails[cat].symbolMap;
+  Object.keys(assetClassDetails).forEach(cat => {
+      const map = assetClassDetails[cat].symbolMap;
       const sorted = Object.entries(map)
           .map(([sym, val]) => ({ symbol: sym, value: val }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 5); 
-      categoryDetails[cat].topSymbols = sorted;
-      delete categoryDetails[cat].symbolMap; 
+      assetClassDetails[cat].topSymbols = sorted;
+      delete assetClassDetails[cat].symbolMap; 
   });
 
-  return { categories, categoryDetails, totalValue };
+  return { assetClasses, assetClassDetails, totalValue };
 };
 
 export const calculateAllocations = (accounts, metadata) => {
-  const categories = {};
-  const categoryDetails = {}; 
+  const assetClasses = {};
+  const assetClassDetails = {}; 
   let totalValue = 0;
 
   accounts.forEach(account => {
     account.positions.forEach(pos => {
       totalValue += pos.SimulatedValue;
-      const ratios = getCategoryRatios(pos.Symbol, metadata);
+      const ratios = getAssetClassRatios(pos.Symbol, metadata);
 
-      Object.entries(ratios).forEach(([category, ratio]) => {
+      Object.entries(ratios).forEach(([assetClass, ratio]) => {
           const contributedValue = pos.SimulatedValue * ratio;
-          categories[category] = (categories[category] || 0) + contributedValue;
+          assetClasses[assetClass] = (assetClasses[assetClass] || 0) + contributedValue;
 
-          if (!categoryDetails[category]) {
-              categoryDetails[category] = { total: 0, symbolMap: {} };
+          if (!assetClassDetails[assetClass]) {
+              assetClassDetails[assetClass] = { total: 0, symbolMap: {} };
           }
-          categoryDetails[category].total += contributedValue;
+          assetClassDetails[assetClass].total += contributedValue;
           
-          if (!categoryDetails[category].symbolMap[pos.Symbol]) {
-              categoryDetails[category].symbolMap[pos.Symbol] = 0;
+          if (!assetClassDetails[assetClass].symbolMap[pos.Symbol]) {
+              assetClassDetails[assetClass].symbolMap[pos.Symbol] = 0;
           }
-          categoryDetails[category].symbolMap[pos.Symbol] += contributedValue;
+          assetClassDetails[assetClass].symbolMap[pos.Symbol] += contributedValue;
       });
     });
   });
 
-  Object.keys(categoryDetails).forEach(cat => {
-      const map = categoryDetails[cat].symbolMap;
+  Object.keys(assetClassDetails).forEach(cat => {
+      const map = assetClassDetails[cat].symbolMap;
       const sorted = Object.entries(map)
           .map(([sym, val]) => ({ symbol: sym, value: val }))
           .sort((a, b) => b.value - a.value)
           .slice(0, 5); 
-      categoryDetails[cat].topSymbols = sorted;
-      delete categoryDetails[cat].symbolMap; 
+      assetClassDetails[cat].topSymbols = sorted;
+      delete assetClassDetails[cat].symbolMap; 
   });
 
-  return { categories, categoryDetails, totalValue };
+  return { assetClasses, assetClassDetails, totalValue };
 };
 
-export const sortCategoriesByValue = (data) => {
+export const sortAssetClassesByValue = (data) => {
   const topLevelTotals = {};
   const keys = Object.keys(data);
 
@@ -124,12 +124,12 @@ export const sortCategoriesByValue = (data) => {
     const topA = a.split(' / ')[0];
     const topB = b.split(' / ')[0];
 
-    // Primary sort: Top-level category total value (Descending)
+    // Primary sort: Top-level asset class total value (Descending)
     if (topA !== topB) {
       return topLevelTotals[topB] - topLevelTotals[topA];
     }
     
-    // Secondary sort: Subcategory name (Alphabetical Ascending)
+    // Secondary sort: Sub-asset class name (Alphabetical Ascending)
     return a.localeCompare(b);
   });
 };

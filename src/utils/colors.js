@@ -28,11 +28,11 @@ export const COLOR_FAMILIES = [
 
 export const UNKNOWN_COLOR = 'fill-gray-300 bg-gray-300';
 
-const getFamilyIndex = (category) => {
-  if (!category || category === 'Unknown') return -1;
+const getFamilyIndex = (assetClass) => {
+  if (!assetClass || assetClass === 'Unknown') return -1;
   
-  // Use top-level category for grouping
-  const topLevel = category.split(' / ')[0].trim();
+  // Use top-level asset class for grouping
+  const topLevel = assetClass.split(' / ')[0].trim();
   
   // Simple stable hash
   let hash = 0;
@@ -43,19 +43,19 @@ const getFamilyIndex = (category) => {
   return Math.abs(hash) % COLOR_FAMILIES.length;
 };
 
-export const getColorString = (category, indexInBroadGroup) => {
-  const familyIndex = getFamilyIndex(category);
+export const getColorString = (assetClass, indexInBroadGroup) => {
+  const familyIndex = getFamilyIndex(assetClass);
   if (familyIndex === -1) return UNKNOWN_COLOR;
   
   const palette = COLOR_FAMILIES[familyIndex];
   return palette[indexInBroadGroup % palette.length];
 };
 
-export const generateColorMap = (categoriesData) => {
-  const categoryKeys = Object.keys(categoriesData).sort();
+export const generateColorMap = (assetClassesData) => {
+  const assetClassKeys = Object.keys(assetClassesData).sort();
   const structure = {}; 
 
-  categoryKeys.forEach(cat => {
+  assetClassKeys.forEach(cat => {
     const parts = cat.split(' / ');
     const top = parts[0] || 'Unclassified';
     if (!structure[top]) structure[top] = [];

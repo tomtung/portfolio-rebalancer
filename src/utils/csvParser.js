@@ -139,15 +139,15 @@ export const normalizeCsv = (csvText, existingMetadata) => {
       const description = columns[descIdx]?.trim();
       if (description) {
         const currentMeta = newMetadata[symbol];
-        // If no metadata exists for this symbol, or it's just a category string/object without description
+        // If no metadata exists for this symbol, or it's just an assetClass string/object without description
         // We want to add the description.
         
         if (!currentMeta) {
              // New entry
-             newMetadata[symbol] = { description, category: "Unknown" };
+             newMetadata[symbol] = { description, assetClass: "Unknown" };
         } else if (typeof currentMeta === 'string') {
-             // Convert string category to object
-             newMetadata[symbol] = { description, category: currentMeta };
+             // Convert string assetClass to object
+             newMetadata[symbol] = { description, assetClass: currentMeta };
         } else if (typeof currentMeta === 'object') {
             // It's an object, check if description is missing
             if (!currentMeta.description) {

@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
 
-export default function SplitAllocator({ value, onChange, existingCategories }) {
+export default function SplitAllocator({ value, onChange, existingAssetClasses }) {
   const parseRowsFromValue = (val) => {
     if (val && typeof val === 'object') {
       const initialRows = Object.entries(val).map(([cat, ratio]) => ({
-        category: cat,
+        assetClass: cat,
         percent: Math.round(ratio * 100)
       }));
       if (initialRows.length === 0) {
-          initialRows.push({ category: '', percent: 100 });
+          initialRows.push({ assetClass: '', percent: 100 });
       }
       return initialRows;
     }
-    return [{ category: '', percent: 100 }];
+    return [{ assetClass: '', percent: 100 }];
   };
 
   const [rows, setRows] = useState(() => parseRowsFromValue(value));
@@ -26,7 +26,7 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
   };
 
   const addRow = () => {
-    const newRows = [...rows, { category: '', percent: 0 }];
+    const newRows = [...rows, { assetClass: '', percent: 0 }];
     setRows(newRows);
     emitChange(newRows);
   };
@@ -38,14 +38,14 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
   };
 
   const emitChange = (currentRows) => {
-    // Convert back to object format: { "Cat": 0.5 }
+    // Convert back to object format: { "AssetClass": 0.5 }
     const newValue = {};
     
     currentRows.forEach(row => {
-        if (!row.category.trim()) return; // Skip empty categories
+        if (!row.assetClass.trim()) return; // Skip empty asset classes
         const ratio = parseFloat(row.percent) / 100;
         if (!isNaN(ratio)) {
-            newValue[row.category] = ratio;
+            newValue[row.assetClass] = ratio;
         }
     });
 
@@ -64,11 +64,11 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
           <div key={index} className="flex gap-2 items-center">
             <input 
               type="text" 
-              value={row.category}
-              onChange={(e) => updateRow(index, 'category', e.target.value)}
+              value={row.assetClass}
+              onChange={(e) => updateRow(index, 'assetClass', e.target.value)}
               className="flex-1 text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500 outline-none"
-              placeholder="Category name"
-              list="split-category-suggestions"
+              placeholder="Asset class name"
+              list="split-asset-class-suggestions"
             />
             <div className="relative w-20">
                 <input 
@@ -96,7 +96,7 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
             onClick={addRow}
             className="text-xs flex items-center gap-1 text-blue-600 hover:text-blue-700"
         >
-            <Plus className="w-3 h-3" /> Add Category
+            <Plus className="w-3 h-3" /> Add Asset Class
         </button>
         <div className={`text-xs font-medium flex items-center gap-1 ${isTotalValid ? 'text-green-600' : 'text-red-600'}`}>
             {!isTotalValid && <AlertCircle className="w-3 h-3" />}
@@ -104,8 +104,8 @@ export default function SplitAllocator({ value, onChange, existingCategories }) 
         </div>
       </div>
 
-      <datalist id="split-category-suggestions">
-        {existingCategories.map(c => <option key={c} value={c} />)}
+      <datalist id="split-asset-class-suggestions">
+        {existingAssetClasses.map(c => <option key={c} value={c} />)}
       </datalist>
     </div>
   );

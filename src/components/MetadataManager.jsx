@@ -4,7 +4,6 @@ import AutoResizingTextarea from './AutoResizingTextarea';
 import SplitAllocator from './SplitAllocator';
 
 export default function MetadataManager({ symbols, metadata, onUpdateMetadata, onReset }) {
-  const [filter, setFilter] = useState('');
   const [editingCell, setEditingCell] = useState(null); // { symbol, field }
   const [editValue, setEditValue] = useState('');
   const [isSplitMode, setIsSplitMode] = useState(false);
@@ -12,20 +11,20 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
   const [rawJsonValue, setRawJsonValue] = useState('');
   
   // New row state
-  const [newRow, setNewRow] = useState(null); // { symbol: '', description: '', category: '' }
+  const [newRow, setNewRow] = useState(null); // { symbol: '', description: '', assetClass: '' }
   const [newRowError, setNewRowError] = useState(false);
   
   // Highlighting state
   const [highlightedSymbol, setHighlightedSymbol] = useState(null);
   const tableContainerRef = useRef(null);
 
-  // Extract unique existing categories for suggestions
-  const existingCategories = useMemo(() => {
+  // Extract unique existing asset classes for suggestions
+  const existingAssetClasses = useMemo(() => {
     const cats = new Set();
     Object.values(metadata).forEach(val => {
       let catVal = val;
-      if (typeof val === 'object' && val.category !== undefined) {
-          catVal = val.category;
+      if (typeof val === 'object' && val.assetClass !== undefined) {
+          catVal = val.assetClass;
       }
       
       if (typeof catVal === 'string') cats.add(catVal);
@@ -43,17 +42,6 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
     return Array.from(s).sort();
   }, [symbols, metadata]);
 
-  const filteredSymbols = allSymbols.filter(s => {
-    const meta = metadata[s];
-    const cat = (meta && typeof meta === 'object' && meta.category !== undefined) ? meta.category : meta;
-    const desc = (meta && typeof meta === 'object' && meta.description) ? meta.description : '';
-    
-    const term = filter.toLowerCase();
-    return s.toLowerCase().includes(term) || 
-           (typeof cat === 'string' && cat.toLowerCase().includes(term)) ||
-           desc.toLowerCase().includes(term);
-  });
-
   useEffect(() => {
       if (highlightedSymbol) {
           const el = document.getElementById(`row-${highlightedSymbol}`);
@@ -63,46 +51,43 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
           const timer = setTimeout(() => setHighlightedSymbol(null), 2000);
           return () => clearTimeout(timer);
       }
-  }, [highlightedSymbol, filteredSymbols]); // filteredSymbols dependency to ensure row exists after render
+  }, [highlightedSymbol]); 
 
   const getMetaParts = (symbol) => {
       const val = metadata[symbol];
-      if (!val) return { category: '', description: '' };
+      if (!val) return { assetClass: '', description: '' };
 
       if (typeof val === 'object') {
-          const hasCategory = 'category' in val;
+          const hasAssetClass = 'assetClass' in val;
           const hasDescription = 'description' in val;
 
-          if (hasCategory || hasDescription) {
-              let cat = val.category;
+          if (hasAssetClass || hasDescription) {
+              let cat = val.assetClass;
               if (typeof cat === 'object' && cat !== null && Object.keys(cat).length === 0) {
                   cat = '';
               }
               return { 
-                  category: cat || '', 
+                  assetClass: cat || '', 
                   description: val.description || '' 
               };
           }
-          if (Object.keys(val).length === 0) return { category: '', description: '' };
-          return { category: val, description: '' };
+          if (Object.keys(val).length === 0) return { assetClass: '', description: '' };
+          return { assetClass: val, description: '' };
       }
       
-      return { category: val, description: '' };
+      return { assetClass: val, description: '' };
   };
 
   const handleEditStart = (symbol, field) => {
-    // Don't start editing if we are in the middle of adding a new row (optional, but cleaner)
-    // Actually user might want to edit others while adding. Let's allow it.
+    const { assetClass, description } = getMetaParts(symbol);
     
-    const { category, description } = getMetaParts(symbol);
-    
-    if (field === 'category') {
-        if (typeof category === 'object') {
+    if (field === 'assetClass') {
+        if (typeof assetClass === 'object') {
             setIsSplitMode(true);
-            setEditValue(category);
+            setEditValue(assetClass);
         } else {
             setIsSplitMode(false);
-            setEditValue(category || '');
+            setEditValue(assetClass || '');
         }
     } else {
         setEditValue(description);
@@ -118,14 +103,14 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
     
     let newValue = editValue;
     
-    // Validate Category JSON if manual entry
-    if (field === 'category' && !isSplitMode && typeof newValue === 'string') {
+    // Validate Asset Class JSON if manual entry
+    if (field === 'assetClass' && !isSplitMode && typeof newValue === 'string') {
         newValue = newValue.trim();
         if (newValue.startsWith('{')) {
             try {
                 newValue = JSON.parse(newValue);
             } catch (e) {
-                alert("Invalid JSON format for category.");
+                alert("Invalid JSON format for asset class.");
                 return;
             }
         }
@@ -135,17 +120,17 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
 
     const newMetadata = { ...metadata };
     
-    let finalCategory = field === 'category' ? newValue : currentMeta.category;
+    let finalAssetClass = field === 'assetClass' ? newValue : currentMeta.assetClass;
     let finalDescription = field === 'description' ? newValue : currentMeta.description;
 
-    const isEmptyCategory = finalCategory === '' || finalCategory === null || (typeof finalCategory === 'object' && Object.keys(finalCategory).length === 0);
+    const isEmptyAssetClass = finalAssetClass === '' || finalAssetClass === null || (typeof finalAssetClass === 'object' && Object.keys(finalAssetClass).length === 0);
     const isEmptyDesc = finalDescription === '';
 
-    if (isEmptyCategory && isEmptyDesc) {
+    if (isEmptyAssetClass && isEmptyDesc) {
         delete newMetadata[symbol];
     } else {
         newMetadata[symbol] = {
-            category: finalCategory,
+            assetClass: finalAssetClass,
             description: finalDescription
         };
     }
@@ -191,7 +176,7 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
       
       const newMetadata = { ...metadata };
       newMetadata[symbol] = {
-          category: '',
+          assetClass: '',
           description: ''
       };
 
@@ -239,10 +224,10 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
   };
 
   return (
-    <div className="overflow-hidden">
-      <div className="pb-4 mb-4 border-b border-gray-200 flex justify-between items-center">
+    <div className="overflow-hidden flex flex-col h-full">
+      <div className="pb-4 mb-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
         <div className="text-xs text-gray-500">
-            {showRawJson ? "Editing raw JSON metadata" : `Managing ${filteredSymbols.length} symbols`}
+            {showRawJson ? "Editing raw JSON metadata" : `Managing ${allSymbols.length} symbols`}
         </div>
         <div className="flex gap-2">
              <button 
@@ -261,50 +246,37 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
       </div>
 
       {showRawJson ? (
-          <div className="p-4">
-              <div className="mb-2 text-xs text-gray-500">
+          <div className="p-4 flex-grow flex flex-col">
+              <div className="mb-2 text-xs text-gray-500 flex-shrink-0">
                   Edit the raw JSON directly. Useful for bulk updates or backing up your config.
               </div>
               <AutoResizingTextarea
                 value={rawJsonValue}
                 onChange={handleRawJsonChange}
-                className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto min-h-[300px]"
+                className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto min-h-[300px] flex-grow"
               />
-              <div className="mt-2 flex justify-end">
+              <div className="mt-2 flex justify-end flex-shrink-0">
                   <button onClick={saveRawJson} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Apply JSON</button>
               </div>
           </div>
       ) : (
-        <>
-            <div className="p-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-                <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Filter symbols, categories, or descriptions..." 
-                        value={filter}
-                        onChange={e => setFilter(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                </div>
-            </div>
-
-            <div className="max-h-[400px] overflow-y-auto" ref={tableContainerRef}>
+        <div className="flex flex-col flex-grow min-h-0">
+            <div className="flex-grow overflow-y-auto min-h-[300px]" ref={tableContainerRef}>
                 <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                    <thead className="bg-gray-50 sticky top-0 shadow-sm z-10">
                         <tr>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-24">Symbol</th>
                             <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[350px]">Category</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase w-[350px]">Asset Class</th>
                             <th className="px-4 py-2 w-10"></th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredSymbols.map(symbol => {
-                            const { category, description } = getMetaParts(symbol);
-                            const isSplit = typeof category === 'object' && category !== null;
+                        {allSymbols.map(symbol => {
+                            const { assetClass, description } = getMetaParts(symbol);
+                            const isSplit = typeof assetClass === 'object' && assetClass !== null;
                             
-                            const isEditingCat = editingCell?.symbol === symbol && editingCell?.field === 'category';
+                            const isEditingAssetClass = editingCell?.symbol === symbol && editingCell?.field === 'assetClass';
                             const isEditingDesc = editingCell?.symbol === symbol && editingCell?.field === 'description';
 
                             return (
@@ -347,18 +319,18 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                                         )}
                                     </td>
 
-                                    {/* Category Column */}
+                                    {/* Asset Class Column */}
                                     <td 
-                                        className={`px-4 py-3 text-sm min-w-[300px] ${!isEditingCat ? 'cursor-pointer hover:bg-gray-100' : ''}`}
-                                        onClick={() => !isEditingCat && !editingCell && handleEditStart(symbol, 'category')}
+                                        className={`px-4 py-3 text-sm min-w-[300px] ${!isEditingAssetClass ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                                        onClick={() => !isEditingAssetClass && !editingCell && handleEditStart(symbol, 'assetClass')}
                                     >
-                                        {isEditingCat ? (
+                                        {isEditingAssetClass ? (
                                             <div className="flex flex-col gap-2">
                                                 {isSplitMode ? (
                                                     <SplitAllocator 
                                                         value={editValue} 
                                                         onChange={setEditValue}
-                                                        existingCategories={existingCategories}
+                                                        existingAssetClasses={existingAssetClasses}
                                                     />
                                                 ) : (
                                                     <>
@@ -369,11 +341,11 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                                                             onKeyDown={e => { if(e.key === 'Enter') handleSave(); else if(e.key === 'Escape') handleCancel(); }}
                                                             className="w-full p-1 border border-blue-400 rounded focus:outline-none text-sm"
                                                             autoFocus
-                                                            list="category-suggestions"
-                                                            placeholder="Enter category..."
+                                                            list="asset-class-suggestions"
+                                                            placeholder="Enter asset class..."
                                                         />
-                                                        <datalist id="category-suggestions">
-                                                            {existingCategories.map(c => <option key={c} value={c} />)}
+                                                        <datalist id="asset-class-suggestions">
+                                                            {existingAssetClasses.map(c => <option key={c} value={c} />)}
                                                         </datalist>
                                                     </>
                                                 )}
@@ -395,15 +367,15 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                                         ) : (
                                             isSplit ? (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {Object.entries(category).map(([k, v]) => (
+                                                    {Object.entries(assetClass).map(([k, v]) => (
                                                         <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700">
                                                             {k}: {Math.round(v*100)}%
                                                         </span>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${category ? 'bg-gray-100 text-gray-800' : 'bg-red-50 text-red-600 border border-red-100'}`}>
-                                                    {category || 'Unknown'}
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${assetClass ? 'bg-gray-100 text-gray-800' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                                    {assetClass || 'Unknown'}
                                                 </span>
                                             )
                                         )}
@@ -454,10 +426,10 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                             </tr>
                         )}
 
-                        {filteredSymbols.length === 0 && !newRow && (
+                        {allSymbols.length === 0 && !newRow && (
                             <tr>
                                 <td colSpan={4} className="px-4 py-8 text-center text-gray-500 text-sm">
-                                    No symbols found matching "{filter}"
+                                    No symbols found.
                                 </td>
                             </tr>
                         )}
@@ -465,7 +437,7 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                 </table>
             </div>
             
-            <div className="p-3 border-t border-gray-200 bg-gray-50">
+            <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
                 <button 
                     onClick={handleAddRowClick}
                     disabled={!!newRow || !!editingCell}
@@ -478,7 +450,7 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                     <Plus className="w-3 h-3" /> Add Symbol Metadata
                 </button>
             </div>
-        </>
+        </div>
       )}
     </div>
   );

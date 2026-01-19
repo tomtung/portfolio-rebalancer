@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { sortCategoriesByValue } from '../utils/calculations';
+import { sortAssetClassesByValue } from '../utils/calculations';
 import { formatCurrency, formatPercent } from '../utils/currency';
 
 const AllocationBar = ({ label, data, total, colors, details, className = "" }) => {
-  const sortedKeys = useMemo(() => sortCategoriesByValue(data), [data]);
+  const sortedKeys = useMemo(() => sortAssetClassesByValue(data), [data]);
   const [tooltip, setTooltip] = useState(null);
 
   const updateTooltip = (e, key, value, percent) => {

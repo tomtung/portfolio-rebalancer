@@ -18,9 +18,9 @@ import MetadataManager from './components/MetadataManager';
 import CsvManager from './components/CsvManager';
 
 export default function App() {
-  const [rawData, setRawData] = usePersistentString('portfolio_csv_v1', INITIAL_CSV_DATA);
-  const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v1', INITIAL_METADATA_JSON);
-  const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v1', {}); 
+  const [rawData, setRawData] = usePersistentString('portfolio_csv_v2', INITIAL_CSV_DATA);
+  const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v2', INITIAL_METADATA_JSON);
+  const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v2', {}); 
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('visualize');
   
@@ -63,7 +63,7 @@ export default function App() {
       }).filter(Boolean); // Filter out nulls
   }, [parsedAccountsMap]);
 
-  // Extract all unique symbols for the category manager
+  // Extract all unique symbols for the asset class manager
   const allSymbols = useMemo(() => {
       const symbols = new Set();
       mergedAccounts.forEach(account => {
@@ -104,8 +104,8 @@ export default function App() {
   const totalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.simulatedTotalValue, 0);
   const originalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.originalTotalValue, 0);
   const totalPortfolioAdjustment = simulatedAccounts.reduce((sum, acc) => sum + acc.totalAdjustment, 0);
-  const { categories, categoryDetails } = useMemo(() => calculateAllocations(simulatedAccounts, metadata), [simulatedAccounts, metadata]);
-  const globalColors = useMemo(() => generateColorMap(categories), [categories]);
+  const { assetClasses, assetClassDetails } = useMemo(() => calculateAllocations(simulatedAccounts, metadata), [simulatedAccounts, metadata]);
+  const globalColors = useMemo(() => generateColorMap(assetClasses), [assetClasses]);
 
   const handleAdjustmentChange = (accountName, symbol, value) => {
     const key = `${accountName}-${symbol}`;
@@ -154,7 +154,7 @@ export default function App() {
   const getConfirmMessage = () => {
       if (confirmAction === 'sim') return "Are you sure you want to clear all simulation adjustments?";
       if (confirmAction === 'csv') return "Are you sure you want to reset the CSV data to the default demo data? This will overwrite your changes.";
-      if (confirmAction === 'meta') return "Are you sure you want to reset the category metadata to defaults? This will overwrite your changes.";
+      if (confirmAction === 'meta') return "Are you sure you want to reset the asset class metadata to defaults? This will overwrite your changes.";
       return "";
   };
 
@@ -267,10 +267,10 @@ export default function App() {
         {simulatedAccounts.length > 0 && (
             <div className="grid grid-cols-1 gap-4">
                 <AllocationPieChart 
-                  data={categories} 
+                  data={assetClasses} 
                   total={totalPortfolioValue} 
                   colors={globalColors} 
-                  details={categoryDetails}
+                  details={assetClassDetails}
                   headerContent={
                     <div className="flex justify-between items-start">
                         <div>

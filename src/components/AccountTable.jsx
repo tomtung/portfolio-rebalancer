@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown, Trash2, RefreshCw } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/currency';
-import { calculateCategoryStats } from '../utils/calculations';
+import { calculateAssetClassStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
 const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, onResetAccount, metadata, colors, showAdjustment = true }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const [flashErrors, setFlashErrors] = useState({});
   const percentOfPortfolio = portfolioTotal > 0 ? (totalValue / portfolioTotal) * 100 : 0;
-  const accountStats = useMemo(() => calculateCategoryStats(positions, metadata), [positions, metadata]);
+  const accountStats = useMemo(() => calculateAssetClassStats(positions, metadata), [positions, metadata]);
 
   const handleLocalAdjustment = (symbol, value, originalValue) => {
       const num = parseFloat(value);
@@ -28,11 +28,14 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
     if (sortConfig.key) {
       sortableItems.sort((a, b) => {
         let aValue, bValue;
-        if (sortConfig.key === 'Category') {
+        if (sortConfig.key === 'Asset Class') {
            const meta = metadata[a.Symbol];
-           aValue = typeof meta === 'object' ? 'Split' : (meta || 'Unknown');
+           const aVal = (meta && typeof meta === 'object' && meta.assetClass !== undefined) ? meta.assetClass : meta;
+           aValue = typeof aVal === 'object' ? 'Split' : (aVal || 'Unknown');
+           
            const metaB = metadata[b.Symbol];
-           bValue = typeof metaB === 'object' ? 'Split' : (metaB || 'Unknown');
+           const bVal = (metaB && typeof metaB === 'object' && metaB.assetClass !== undefined) ? metaB.assetClass : metaB;
+           bValue = typeof bVal === 'object' ? 'Split' : (bVal || 'Unknown');
         } else {
            aValue = a[sortConfig.key];
            bValue = b[sortConfig.key];
@@ -96,7 +99,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
           {showAdjustment && totalAdjustment !== 0 && (
               <button 
                 onClick={() => onResetAccount && onResetAccount(name)}
-                className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-red-500 hover:text-red-600 bg-white hover:bg-red-50 px-3 py-1.5 rounded-full border border-red-100 shadow-sm transition-all"
+                className="mt-3 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 px-3 py-1.5 rounded-full border border-red-100 shadow-sm transition-all"
               >
                   <RefreshCw className="w-3 h-3" /> Reset Adjustments
               </button>
@@ -106,10 +109,10 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
 
       <div className="px-8 py-6 border-b border-gray-50 bg-white/50">
         <AllocationBar 
-          data={accountStats.categories} 
+          data={accountStats.assetClasses} 
           total={totalValue} 
           colors={colors}
-          details={accountStats.categoryDetails}
+          details={accountStats.assetClassDetails}
           className="shadow-none border-0 p-0 bg-transparent"
         />
       </div>
@@ -119,7 +122,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
           <thead className="bg-white">
             <tr>
               <HeaderCell label="Symbol" sortKey="Symbol" className="pl-8" />
-              <HeaderCell label="Category" sortKey="Category" />
+              <HeaderCell label="Asset Class" sortKey="Asset Class" />
               <HeaderCell label="Dollar Value" sortKey="SimulatedValue" align="right" />
               <HeaderCell label="Account %" sortKey="PercentOfAccount" align="right" />
               {showAdjustment && <HeaderCell label="Adjustment" sortKey="adjustment" align="right" className="bg-slate-50/50" />}
@@ -128,13 +131,13 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
           <tbody className="divide-y divide-gray-50 bg-white">
             {sortedPositions.map((row) => {
                 const meta = metadata[row.Symbol];
-                const isSplit = meta && typeof meta === 'object' && meta.category !== undefined 
-                    ? typeof meta.category === 'object' 
+                const isSplit = meta && typeof meta === 'object' && meta.assetClass !== undefined 
+                    ? typeof meta.assetClass === 'object' 
                     : typeof meta === 'object';
                 
-                const categoryLabelVal = meta && typeof meta === 'object' && meta.category !== undefined ? meta.category : meta;
-                const categoryLabel = isSplit ? 'Split' : (categoryLabelVal || "Unknown");
-                const isUnknown = categoryLabel === "Unknown";
+                const assetClassLabelVal = meta && typeof meta === 'object' && meta.assetClass !== undefined ? meta.assetClass : meta;
+                const assetClassLabel = isSplit ? 'Split' : (assetClassLabelVal || "Unknown");
+                const isUnknown = assetClassLabel === "Unknown";
 
                 const description = meta && typeof meta === 'object' && meta.description ? meta.description : row.Description || '';
                 
@@ -147,7 +150,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                     <td className="py-5 px-4 text-sm text-gray-500">
                       {isSplit ? (
                         <div className="flex flex-wrap gap-1.5">
-                          {Object.entries(categoryLabelVal).sort((a,b) => b[1] - a[1]).map(([cat, ratio]) => (
+                          {Object.entries(assetClassLabelVal).sort((a,b) => b[1] - a[1]).map(([cat, ratio]) => (
                             <span key={cat} className="inline-flex items-center text-[9px] font-bold uppercase tracking-tighter bg-indigo-50/50 text-indigo-600 px-2 py-0.5 rounded-md border border-indigo-100/50">
                               {cat} {Math.round(ratio * 100)}%
                             </span>
@@ -155,7 +158,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                         </div>
                       ) : (
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${isUnknown ? 'bg-red-50 text-red-500 border-red-100' : 'bg-slate-50 text-gray-600 border-slate-200'}`}>
-                          {categoryLabel}
+                          {assetClassLabel}
                         </span>
                       )}
                     </td>
