@@ -220,51 +220,47 @@ export default function App() {
 
         {/* CSV & JSON Editors (Stacked) - Only in Visualize - NOW ABOVE CHART */}
         {activeTab === 'visualize' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-500">
-                    <details className="group">
-                        <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                                    <FileText className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
-                                </div>
-                                <span>Portfolio Data (CSV)</span>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
+                <details className="group p-6 hover:bg-gray-50/50 transition-colors">
+                    <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                                <FileText className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
                             </div>
-                            <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
-                        </summary>
-                        <div className="mt-6 pt-6 border-t border-gray-50">
-                            <CsvManager 
-                                csvData={rawData}
-                                onUpdateCsv={setRawData}
-                                onReset={() => setConfirmAction('csv')}
-                                metadata={metadata}
-                                onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                            />
+                            <span>Portfolio Data (CSV)</span>
                         </div>
-                    </details>
-                </div>
+                        <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
+                    </summary>
+                    <div className="mt-6 pt-6 border-t border-gray-50">
+                        <CsvManager 
+                            csvData={rawData}
+                            onUpdateCsv={setRawData}
+                            onReset={() => setConfirmAction('csv')}
+                            metadata={metadata}
+                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+                        />
+                    </div>
+                </details>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-500">
-                    <details className="group">
-                        <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                                    <Tag className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
-                                </div>
-                                <span>Symbol Metadata (JSON)</span>
+                <details className="group p-6 hover:bg-gray-50/50 transition-colors">
+                    <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                                <Tag className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
                             </div>
-                            <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
-                        </summary>
-                        <div className="mt-6 pt-6 border-t border-gray-50">
-                            <MetadataManager 
-                                symbols={allSymbols} 
-                                metadata={metadata} 
-                                onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                                onReset={() => setConfirmAction('meta')}
-                            />
+                            <span>Symbol Metadata (JSON)</span>
                         </div>
-                    </details>
-                </div>
+                        <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
+                    </summary>
+                    <div className="mt-6 pt-6 border-t border-gray-50">
+                        <MetadataManager 
+                            symbols={allSymbols} 
+                            metadata={metadata} 
+                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+                            onReset={() => setConfirmAction('meta')}
+                        />
+                    </div>
+                </details>
             </div>
         )}
 
