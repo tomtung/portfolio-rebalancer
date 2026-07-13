@@ -12,12 +12,17 @@ export default function AutoRebalanceManager({
   // State for Target Ranges: { "AssetClass": { min: 0-100, max: 0-100 } }
   const [targets, setTargets] = useState({});
   
+  // State for Enabled Targets: Set of AssetClasses that are active constraints
+  const [enabledTargets, setEnabledTargets] = useState(new Set());
+  
   // State for Locks: { accountId: { symbol: { noBuy: boolean, noSell: boolean } } }
   const [locks, setLocks] = useState({});
 
   // Initialize targets logic
   const resetTargetsToCurrent = () => {
     const initialTargets = {};
+    const initialEnabled = new Set();
+    
     Object.keys(assetClassDetails).forEach(cls => {
       if (cls === 'Unknown') return;
       const currentPct = (assetClassDetails[cls].total / totalPortfolioValue) * 100;
@@ -25,8 +30,11 @@ export default function AutoRebalanceManager({
         min: Math.max(0, Math.floor(currentPct - 5)),
         max: Math.min(100, Math.ceil(currentPct + 5))
       };
+      // Default enabled? Maybe yes, let user uncheck.
+      initialEnabled.add(cls);
     });
     setTargets(initialTargets);
+    setEnabledTargets(initialEnabled);
   };
 
   // Initial load
@@ -42,6 +50,22 @@ export default function AutoRebalanceManager({
       ...prev,
       [cls]: { ...prev[cls], [field]: isNaN(num) ? 0 : num }
     }));
+  };
+
+  const toggleTargetEnabled = (cls) => {
+      setEnabledTargets(prev => {
+          const next = new Set(prev);
+          if (next.has(cls)) {
+              next.delete(cls);
+          } else {
+              next.add(cls);
+              // Ensure we have a valid target value if enabling
+              if (!targets[cls]) {
+                  setTargets(curr => ({ ...curr, [cls]: { min: 0, max: 100 } }));
+              }
+          }
+          return next;
+      });
   };
 
   const toggleLock = (accountName, symbol, type) => {
@@ -66,7 +90,10 @@ export default function AutoRebalanceManager({
   const handleRun = () => {
     const normalizedTargets = {};
     Object.entries(targets).forEach(([cls, range]) => {
-      normalizedTargets[cls] = { min: range.min / 100, max: range.max / 100 };
+      // Only include enabled targets
+      if (enabledTargets.has(cls)) {
+        normalizedTargets[cls] = { min: range.min / 100, max: range.max / 100 };
+      }
     });
     onApplyRebalance(normalizedTargets, locks);
   };
@@ -138,32 +165,50 @@ export default function AutoRebalanceManager({
                   const currentVal = assetClassDetails[cls].total;
                   const currentPct = (currentVal / totalPortfolioValue) * 100;
                   const range = targets[cls] || { min: 0, max: 0 };
-                  const isDrifting = currentPct < range.min || currentPct > range.max;
+                  const isEnabled = enabledTargets.has(cls);
+                  const isDrifting = isEnabled && (currentPct < range.min || currentPct > range.max);
 
                   return (
-                    <tr key={cls} className="hover:bg-gray-50/50 transition-colors group">
+                    <tr key={cls} className={`transition-colors border-b border-gray-50 last:border-0 ${isEnabled ? 'bg-white hover:bg-gray-50/50' : 'bg-gray-50/50 opacity-60'}`}>
                       <td className="px-4 py-4 font-medium text-gray-800">
-                        {cls}
-                        <div className="text-[10px] text-gray-400 font-normal mt-0.5">
-                            Current: <span className={isDrifting ? 'text-red-500 font-bold' : 'text-gray-600'}>{currentPct.toFixed(1)}%</span>
+                        <div className="flex items-center gap-3">
+                            <input 
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => toggleTargetEnabled(cls)}
+                                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div>
+                                <span className={isEnabled ? 'text-gray-900' : 'text-gray-400'}>{cls}</span>
+                                {isEnabled && (
+                                    <div className="text-[10px] text-gray-400 font-normal mt-0.5">
+                                        Current: <span className={isDrifting ? 'text-red-500 font-bold' : 'text-gray-600'}>{currentPct.toFixed(1)}%</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                       </td>
                       <td className="px-4 py-4">
-                         <div className="flex items-center gap-3">
-                            <span className="text-[10px] text-gray-400 font-mono w-8 text-right">0%</span>
-                            <AllocationVisual current={currentPct} min={range.min} max={range.max} />
-                            <span className="text-[10px] text-gray-400 font-mono w-8">100%</span>
-                         </div>
+                         {isEnabled ? (
+                             <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-gray-400 font-mono w-8 text-right">0%</span>
+                                <AllocationVisual current={currentPct} min={range.min} max={range.max} />
+                                <span className="text-[10px] text-gray-400 font-mono w-8">100%</span>
+                             </div>
+                         ) : (
+                             <div className="text-xs text-gray-400 italic text-center">Unconstrained</div>
+                         )}
                       </td>
                       <td className="px-4 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-100 group-hover:border-blue-200 transition-colors">
+                        <div className={`flex items-center justify-end gap-2 p-1.5 rounded-lg border transition-colors ${isEnabled ? 'bg-gray-50 border-gray-100 hover:border-blue-200' : 'bg-transparent border-transparent'}`}>
                           <input
                             type="number"
                             min="0"
                             max="100"
+                            disabled={!isEnabled}
                             value={range.min}
                             onChange={(e) => handleTargetChange(cls, 'min', e.target.value)}
-                            className="w-12 text-center bg-transparent focus:ring-0 border-b border-gray-300 focus:border-blue-500 outline-none text-gray-700 font-mono text-sm"
+                            className="w-12 text-center bg-transparent focus:ring-0 border-b border-gray-300 focus:border-blue-500 outline-none text-gray-700 font-mono text-sm disabled:text-gray-300 disabled:border-gray-200"
                             placeholder="Min"
                           />
                           <span className="text-gray-300">-</span>
@@ -171,9 +216,10 @@ export default function AutoRebalanceManager({
                             type="number"
                             min="0"
                             max="100"
+                            disabled={!isEnabled}
                             value={range.max}
                             onChange={(e) => handleTargetChange(cls, 'max', e.target.value)}
-                            className="w-12 text-center bg-transparent focus:ring-0 border-b border-gray-300 focus:border-blue-500 outline-none text-gray-700 font-mono text-sm"
+                            className="w-12 text-center bg-transparent focus:ring-0 border-b border-gray-300 focus:border-blue-500 outline-none text-gray-700 font-mono text-sm disabled:text-gray-300 disabled:border-gray-200"
                             placeholder="Max"
                           />
                         </div>
