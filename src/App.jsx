@@ -16,6 +16,8 @@ import AllocationPieChart from './components/AllocationPieChart';
 import AccountTable from './components/AccountTable';
 import MetadataManager from './components/MetadataManager';
 import CsvManager from './components/CsvManager';
+import AutoRebalanceManager from './components/AutoRebalanceManager';
+import { calculateRebalancing } from './utils/rebalancer';
 
 export default function App() {
   const [rawData, setRawData] = usePersistentString('portfolio_csv_v2', INITIAL_CSV_DATA);
@@ -262,6 +264,46 @@ export default function App() {
                     </div>
                 </details>
             </div>
+        )}
+
+        {/* Auto Rebalance Manager - Only in Rebalance */}
+        {activeTab === 'rebalance' && simulatedAccounts.length > 0 && (
+            <AutoRebalanceManager
+                accounts={simulatedAccounts.map(a => ({ ...a, id: a.name }))}
+                metadata={metadata}
+                assetClassDetails={assetClassDetails}
+                totalPortfolioValue={totalPortfolioValue}
+                onApplyRebalance={(targets, locks) => {
+                    // Prepare data for rebalancer
+                    const rebalanceInputAccounts = simulatedAccounts.map(acc => ({
+                        id: acc.name,
+                        positions: acc.positions
+                    }));
+
+                    const result = calculateRebalancing(rebalanceInputAccounts, metadata, targets, locks);
+
+                    if (!result.feasible) {
+                        setError("Could not find a feasible rebalancing solution. Please check constraints.");
+                        return;
+                    }
+
+                    // Apply trades as adjustments
+                    setAdjustments(prev => {
+                        const next = { ...prev };
+                        result.trades.forEach(trade => {
+                            const key = `${trade.accountId}-${trade.symbol}`;
+                            const currentAdj = next[key] || 0;
+                            // Buy = positive adjustment, Sell = negative
+                            const change = trade.type === 'BUY' ? trade.amount : -trade.amount;
+                            next[key] = currentAdj + change;
+                        });
+                        return next;
+                    });
+                    
+                    // Clear any previous error
+                    setError(null);
+                }}
+            />
         )}
 
         {simulatedAccounts.length > 0 && (
