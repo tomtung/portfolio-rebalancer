@@ -348,7 +348,7 @@ export default function RebalanceModal({
                   <thead className="bg-gray-50 text-gray-500 font-medium text-xs uppercase tracking-wider">
                     <tr>
                       <th className="px-3 py-2.5 text-left rounded-l-lg w-[30%]">Asset Class</th>
-                      <th className="px-3 py-2.5 text-center w-[40%]">Range vs. Current</th>
+                      <th className="px-3 py-2.5 text-center w-[40%]">Target Range vs. Current</th>
                       <th className="px-3 py-2.5 text-right rounded-r-lg w-[30%]">Min / Max %</th>
                     </tr>
                   </thead>
@@ -534,21 +534,28 @@ export default function RebalanceModal({
           {/* ── Step 3: Review & Apply ── */}
           {step === 3 && result && (
             <div className="p-6 space-y-5">
-              {result.slacksUsed && (
-                <div className="flex items-start gap-2.5 p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm text-amber-800">
-                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Partial fit</p>
-                    <p className="text-xs text-amber-600 mt-0.5">
-                      Some target ranges could not be fully met due to account constraints or trade locks.
-                      The solver found the closest feasible allocation.
-                    </p>
-                  </div>
-                </div>
-              )}
 
               <div>
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Allocation Changes</h3>
+
+                {result.trades.length === 0 && !result.slacksUsed && (
+                  <div className="mb-4 text-center py-6 bg-green-50/50 rounded-xl border border-green-100">
+                    <Check className="w-8 h-8 mx-auto mb-2 text-green-500" />
+                    <p className="text-sm font-bold text-green-800">Portfolio is already within target ranges.</p>
+                    <p className="text-xs mt-1 text-green-600">No allocation changes or trades needed.</p>
+                  </div>
+                )}
+
+                {result.slacksUsed && (
+                  <div className="mb-4 text-center py-6 bg-amber-50/50 rounded-xl border border-amber-100">
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-500" />
+                    <p className="text-sm font-bold text-amber-800">Partial Fit: Targets Not Fully Met</p>
+                    <p className="text-xs mt-1 text-amber-700 max-w-md mx-auto">
+                      The optimizer found the closest possible allocation, but couldn't perfectly hit all your target ranges. This happens when the target ranges contradict each other, or when account boundaries (inability to move money between accounts) and trade locks restrict available trades.
+                    </p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   {Object.entries(postTradeAllocations)
                     .filter(([cls]) => cls !== 'Unknown')
@@ -581,10 +588,8 @@ export default function RebalanceModal({
                   Proposed Trades ({result.trades.length})
                 </h3>
                 {result.trades.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <Check className="w-8 h-8 mx-auto mb-2 text-green-400" />
-                    <p className="text-sm font-medium">Portfolio is already within target ranges.</p>
-                    <p className="text-xs mt-1">No trades needed.</p>
+                  <div className="text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+                    <p className="text-sm font-medium">No trades proposed.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
