@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FileText, RefreshCw, AlertCircle, PieChart, Tag } from 'lucide-react';
+import { Settings, RefreshCw, AlertCircle, PieChart, Play } from 'lucide-react';
 
 import { INITIAL_CSV_DATA, INITIAL_METADATA_JSON } from './data/initialData';
 import { processData } from './utils/csvParser';
@@ -11,25 +11,24 @@ import { usePersistentString } from './hooks/usePersistentString';
 import { usePersistentObject } from './hooks/usePersistentObject';
 
 import ConfirmModal from './components/ConfirmModal';
-import AutoResizingTextarea from './components/AutoResizingTextarea';
 import AllocationPieChart from './components/AllocationPieChart';
 import AccountTable from './components/AccountTable';
-import MetadataManager from './components/MetadataManager';
-import CsvManager from './components/CsvManager';
-import AutoRebalanceManager from './components/AutoRebalanceManager';
-import { calculateRebalancing } from './utils/rebalancer';
+import DataSettingsModal from './components/DataSettingsModal';
+import RebalanceModal from './components/RebalanceModal';
 
 export default function App() {
   const [rawData, setRawData] = usePersistentString('portfolio_csv_v2', INITIAL_CSV_DATA);
   const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v2', INITIAL_METADATA_JSON);
   const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v2', {}); 
+  const [locks, setLocks] = usePersistentObject('portfolio_locks_v2', {});
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('visualize');
   
-  // Modal State
-  const [confirmAction, setConfirmAction] = useState(null); // 'sim', 'csv', 'meta', null
+  // Modal states
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [showDataSettings, setShowDataSettings] = useState(false);
+  const [showRebalance, setShowRebalance] = useState(false);
 
-  // 1. Parse CSV (Immutable source)
+  // 1. Parse CSV
   const parsedAccountsMap = useMemo(() => {
     try {
       const data = processData(rawData);
@@ -46,26 +45,22 @@ export default function App() {
     try { return JSON.parse(rawMetadata); } catch (e) { return {}; }
   }, [rawMetadata]);
 
-  // 2. Simplify mergedAccounts (No longer merging manual positions)
+  // 2. Build account array
   const mergedAccounts = useMemo(() => {
-    // Convert back to array for rendering
     return Object.keys(parsedAccountsMap).map(accountName => {
         const accountData = parsedAccountsMap[accountName];
         const positionsArray = Object.values(accountData.positions)
           .sort((a, b) => b.OriginalValue - a.OriginalValue);
-    
-        // If manual removal left an empty account, exclude it
         if (positionsArray.length === 0) return null;
-
         return {
           name: accountName,
           originalTotalValue: accountData.totalValue,
           positions: positionsArray
         };
-      }).filter(Boolean); // Filter out nulls
+      }).filter(Boolean);
   }, [parsedAccountsMap]);
 
-  // Extract all unique symbols for the asset class manager
+  // Extract all unique symbols for the metadata editor
   const allSymbols = useMemo(() => {
       const symbols = new Set();
       mergedAccounts.forEach(account => {
@@ -74,14 +69,13 @@ export default function App() {
       return Array.from(symbols).sort();
   }, [mergedAccounts]);
 
-  // 3. Apply Adjustments
+  // 3. Apply Adjustments (always applied — no tab gating)
   const simulatedAccounts = useMemo(() => {
-    const currentAdjustments = activeTab === 'rebalance' ? adjustments : {};
     return mergedAccounts.map(account => {
       let accountTotalAdjustment = 0;
       const positionsWithAdjustments = account.positions.map(pos => {
         const key = `${account.name}-${pos.Symbol}`;
-        const adjustment = currentAdjustments[key] || 0;
+        const adjustment = adjustments[key] || 0;
         accountTotalAdjustment += adjustment;
         return {
           ...pos,
@@ -101,7 +95,7 @@ export default function App() {
         positions: finalPositions
       };
     });
-  }, [mergedAccounts, adjustments, activeTab]);
+  }, [mergedAccounts, adjustments]);
 
   const totalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.simulatedTotalValue, 0);
   const originalPortfolioValue = simulatedAccounts.reduce((sum, acc) => sum + acc.originalTotalValue, 0);
@@ -109,11 +103,11 @@ export default function App() {
   const { assetClasses, assetClassDetails } = useMemo(() => calculateAllocations(simulatedAccounts, metadata), [simulatedAccounts, metadata]);
   const globalColors = useMemo(() => generateColorMap(assetClasses), [assetClasses]);
 
+  // Handlers
   const handleAdjustmentChange = (accountName, symbol, value) => {
     const key = `${accountName}-${symbol}`;
     let numValue = parseFloat(value);
 
-    // Find original value to validate
     const account = mergedAccounts.find(a => a.name === accountName);
     const position = account?.positions.find(p => p.Symbol === symbol);
     const originalValue = position?.OriginalValue || 0;
@@ -142,6 +136,40 @@ export default function App() {
       });
   };
 
+  const handleToggleLock = (accountName, symbol, type) => {
+    setLocks(prev => {
+      const accLocks = prev[accountName] || {};
+      const symLocks = accLocks[symbol] || {};
+      const newSymLocks = { ...symLocks, [type]: !symLocks[type] };
+      
+      // Clean up empty entries
+      if (!newSymLocks.noBuy && !newSymLocks.noSell) {
+        const { [symbol]: _, ...restAccLocks } = accLocks;
+        if (Object.keys(restAccLocks).length === 0) {
+          const { [accountName]: __, ...restLocks } = prev;
+          return restLocks;
+        }
+        return { ...prev, [accountName]: restAccLocks };
+      }
+
+      return { ...prev, [accountName]: { ...accLocks, [symbol]: newSymLocks } };
+    });
+  };
+
+  const handleApplyTrades = (trades) => {
+    setAdjustments(prev => {
+      const next = { ...prev };
+      trades.forEach(trade => {
+        const key = `${trade.accountId}-${trade.symbol}`;
+        const currentAdj = next[key] || 0;
+        const change = trade.type === 'BUY' ? trade.amount : -trade.amount;
+        next[key] = currentAdj + change;
+      });
+      return next;
+    });
+    setError(null);
+  };
+
   const confirmReset = () => {
       if (confirmAction === 'sim') {
           setAdjustments({});
@@ -161,16 +189,39 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen p-4 md:p-12 font-sans transition-colors duration-700 ${activeTab === 'rebalance' ? 'bg-[#f0f4f8]' : 'bg-[#fcfcfd]'}`}>
+    <div className="min-h-screen p-4 md:p-12 font-sans bg-[#fcfcfd]">
       <div className="max-w-7xl mx-auto space-y-10"> 
         
-        {/* Reset Modal */}
+        {/* Modals */}
         <ConfirmModal 
             isOpen={!!confirmAction}
             title="Confirm Reset"
             message={getConfirmMessage()}
             onConfirm={confirmReset}
             onCancel={() => setConfirmAction(null)}
+        />
+
+        <DataSettingsModal
+          isOpen={showDataSettings}
+          onClose={() => setShowDataSettings(false)}
+          csvData={rawData}
+          onUpdateCsv={setRawData}
+          onResetCsv={() => setConfirmAction('csv')}
+          metadata={metadata}
+          onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
+          onResetMeta={() => setConfirmAction('meta')}
+          allSymbols={allSymbols}
+        />
+
+        <RebalanceModal
+          isOpen={showRebalance}
+          onClose={() => setShowRebalance(false)}
+          accounts={simulatedAccounts}
+          metadata={metadata}
+          assetClassDetails={assetClassDetails}
+          totalPortfolioValue={totalPortfolioValue}
+          locks={locks}
+          onApplyTrades={handleApplyTrades}
         />
 
         {/* Header */}
@@ -186,30 +237,19 @@ export default function App() {
               Local in-browser asset allocation simulation
             </p>
           </div>
-          <div className="flex items-center gap-4">
-             {/* Mode Switch - High Class Version */}
-             <div className="bg-gray-200/50 p-1.5 rounded-full flex items-center backdrop-blur-sm border border-white/50 shadow-inner">
-                <button
-                    onClick={() => setActiveTab('visualize')}
-                    className={`px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${
-                        activeTab === 'visualize' 
-                        ? 'bg-white text-blue-600 shadow-md scale-105' 
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                >
-                    Visualize
-                </button>
-                <button
-                    onClick={() => setActiveTab('rebalance')}
-                    className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${
-                        activeTab === 'rebalance' 
-                        ? 'bg-white text-blue-600 shadow-md scale-105' 
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                >
-                    Rebalance
-                </button>
-             </div>
+          <div className="flex items-center gap-3">
+             <button
+               onClick={() => setShowDataSettings(true)}
+               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition-all hover:shadow-md"
+             >
+               <Settings className="w-4 h-4" /> Data Settings
+             </button>
+             <button
+               onClick={() => setShowRebalance(true)}
+               className="flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-200 transition-all hover:shadow-xl active:scale-95"
+             >
+               <Play className="w-4 h-4 fill-current" /> Rebalance
+             </button>
           </div>
         </div>
 
@@ -220,92 +260,7 @@ export default function App() {
           </div>
         )}
 
-        {/* CSV & JSON Editors (Stacked) - Only in Visualize - NOW ABOVE CHART */}
-        {activeTab === 'visualize' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
-                <details className="group p-6 hover:bg-gray-50/50 transition-colors">
-                    <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                                <FileText className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
-                            </div>
-                            <span>Portfolio Data (CSV)</span>
-                        </div>
-                        <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
-                    </summary>
-                    <div className="mt-6 pt-6 border-t border-gray-50">
-                        <CsvManager 
-                            csvData={rawData}
-                            onUpdateCsv={setRawData}
-                            onReset={() => setConfirmAction('csv')}
-                            metadata={metadata}
-                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                        />
-                    </div>
-                </details>
-
-                <details className="group p-6 hover:bg-gray-50/50 transition-colors">
-                    <summary className="cursor-pointer text-sm font-bold text-gray-500 group-hover:text-gray-900 select-none flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
-                                <Tag className="w-5 h-5 group-hover:text-blue-600 transition-colors" />
-                            </div>
-                            <span>Symbol Metadata (JSON)</span>
-                        </div>
-                        <div className="text-xs font-normal opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest text-blue-600">Edit</div>
-                    </summary>
-                    <div className="mt-6 pt-6 border-t border-gray-50">
-                        <MetadataManager 
-                            symbols={allSymbols} 
-                            metadata={metadata} 
-                            onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-                            onReset={() => setConfirmAction('meta')}
-                        />
-                    </div>
-                </details>
-            </div>
-        )}
-
-        {/* Auto Rebalance Manager - Only in Rebalance */}
-        {activeTab === 'rebalance' && simulatedAccounts.length > 0 && (
-            <AutoRebalanceManager
-                accounts={simulatedAccounts.map(a => ({ ...a, id: a.name }))}
-                metadata={metadata}
-                assetClassDetails={assetClassDetails}
-                totalPortfolioValue={totalPortfolioValue}
-                onApplyRebalance={(targets, locks) => {
-                    // Prepare data for rebalancer
-                    const rebalanceInputAccounts = simulatedAccounts.map(acc => ({
-                        id: acc.name,
-                        positions: acc.positions
-                    }));
-
-                    const result = calculateRebalancing(rebalanceInputAccounts, metadata, targets, locks);
-
-                    if (!result.feasible) {
-                        setError("Could not find a feasible rebalancing solution. Please check constraints.");
-                        return;
-                    }
-
-                    // Apply trades as adjustments
-                    setAdjustments(prev => {
-                        const next = { ...prev };
-                        result.trades.forEach(trade => {
-                            const key = `${trade.accountId}-${trade.symbol}`;
-                            const currentAdj = next[key] || 0;
-                            // Buy = positive adjustment, Sell = negative
-                            const change = trade.type === 'BUY' ? trade.amount : -trade.amount;
-                            next[key] = currentAdj + change;
-                        });
-                        return next;
-                    });
-                    
-                    // Clear any previous error
-                    setError(null);
-                }}
-            />
-        )}
-
+        {/* Portfolio Allocation Chart */}
         {simulatedAccounts.length > 0 && (
             <div className="grid grid-cols-1 gap-4">
                 <AllocationPieChart 
@@ -332,7 +287,7 @@ export default function App() {
                                 )}
                             </div>
                             <div className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mt-2">Total Portfolio Value</div>
-                            {activeTab === 'rebalance' && Object.keys(adjustments).length > 0 && (
+                            {Object.keys(adjustments).length > 0 && (
                                 <button 
                                     onClick={() => setConfirmAction('sim')}
                                     className="mt-4 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 text-red-500 hover:text-red-600 bg-red-50/50 hover:bg-red-50 px-3 py-1.5 rounded-full border border-red-100 transition-all duration-300"
@@ -347,6 +302,7 @@ export default function App() {
             </div>
         )}
 
+        {/* Account Tables */}
         <div className="space-y-8">
             {simulatedAccounts.length === 0 && !error ? (
             <div className="flex flex-col items-center justify-center p-20 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
@@ -367,7 +323,8 @@ export default function App() {
                 onResetAccount={handleResetAccount}
                 metadata={metadata}
                 colors={globalColors}
-                showAdjustment={activeTab === 'rebalance'}
+                locks={locks[account.name] || {}}
+                onToggleLock={handleToggleLock}
                 />
             ))
             )}
