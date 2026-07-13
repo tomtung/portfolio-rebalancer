@@ -20,7 +20,6 @@ export default function App() {
   const [rawData, setRawData] = usePersistentString('portfolio_csv_v2', INITIAL_CSV_DATA);
   const [rawMetadata, setRawMetadata] = usePersistentString('portfolio_meta_v2', INITIAL_METADATA_JSON);
   const [adjustments, setAdjustments] = usePersistentObject('portfolio_adj_v2', {}); 
-  const [locks, setLocks] = usePersistentObject('portfolio_locks_v2', {});
   const [error, setError] = useState(null);
   
   // Modal states
@@ -136,25 +135,6 @@ export default function App() {
       });
   };
 
-  const handleToggleLock = (accountName, symbol, type) => {
-    setLocks(prev => {
-      const accLocks = prev[accountName] || {};
-      const symLocks = accLocks[symbol] || {};
-      const newSymLocks = { ...symLocks, [type]: !symLocks[type] };
-      
-      // Clean up empty entries
-      if (!newSymLocks.noBuy && !newSymLocks.noSell) {
-        const { [symbol]: _, ...restAccLocks } = accLocks;
-        if (Object.keys(restAccLocks).length === 0) {
-          const { [accountName]: __, ...restLocks } = prev;
-          return restLocks;
-        }
-        return { ...prev, [accountName]: restAccLocks };
-      }
-
-      return { ...prev, [accountName]: { ...accLocks, [symbol]: newSymLocks } };
-    });
-  };
 
   const handleApplyTrades = (trades) => {
     setAdjustments(prev => {
@@ -220,7 +200,6 @@ export default function App() {
           metadata={metadata}
           assetClassDetails={assetClassDetails}
           totalPortfolioValue={totalPortfolioValue}
-          locks={locks}
           onApplyTrades={handleApplyTrades}
         />
 
@@ -323,8 +302,6 @@ export default function App() {
                 onResetAccount={handleResetAccount}
                 metadata={metadata}
                 colors={globalColors}
-                locks={locks[account.name] || {}}
-                onToggleLock={handleToggleLock}
                 />
             ))
             )}

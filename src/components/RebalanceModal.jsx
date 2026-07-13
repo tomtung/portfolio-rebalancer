@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, BarChart3, RefreshCw, Play, ArrowRight, ArrowLeft, Check, AlertTriangle, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { X, BarChart3, RefreshCw, Play, ArrowRight, ArrowLeft, Check, AlertTriangle, TrendingUp, TrendingDown, Info, Lock, Unlock, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateRebalancing } from '../utils/rebalancer';
 import { getAssetClassRatios } from '../utils/calculations';
+import { usePersistentObject } from '../hooks/usePersistentObject';
 
 export default function RebalanceModal({
   isOpen,
@@ -11,33 +12,65 @@ export default function RebalanceModal({
   metadata,
   assetClassDetails,
   totalPortfolioValue,
-  locks,
   onApplyTrades
 }) {
   const [step, setStep] = useState(1); // 1 = Targets, 2 = Preview
-  const [targets, setTargets] = useState({});
-  const [enabledTargets, setEnabledTargets] = useState(new Set());
-  const [result, setResult] = useState(null); // solver result
+  const [targets, setTargets] = usePersistentObject('portfolio_targets_v2', {});
+  const [enabledTargetsList, setEnabledTargetsList] = usePersistentObject('portfolio_enabled_targets_v2', []);
+  const [locks, setLocks] = useState({});
+  const [locksExpanded, setLocksExpanded] = useState(false);
+  const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+
+  // Convert persisted array to Set for internal use
+  const enabledTargets = useMemo(() => new Set(enabledTargetsList), [enabledTargetsList]);
+  const setEnabledTargets = (updater) => {
+    if (typeof updater === 'function') {
+      setEnabledTargetsList(prev => {
+        const currentSet = new Set(prev);
+        const newSet = updater(currentSet);
+        return Array.from(newSet);
+      });
+    } else {
+      setEnabledTargetsList(Array.from(updater));
+    }
+  };
 
   // Initialize targets when modal opens
   useEffect(() => {
     if (isOpen && Object.keys(assetClassDetails).length > 0) {
-      // Only reinitialize if targets are empty (first open or reset)
       if (Object.keys(targets).length === 0) {
         resetTargetsToCurrent();
+      } else {
+        // Merge in any new asset classes that appeared since last save
+        const updated = { ...targets };
+        let changed = false;
+        Object.keys(assetClassDetails).forEach(cls => {
+          if (cls === 'Unknown') return;
+          if (!updated[cls]) {
+            const currentPct = (assetClassDetails[cls].total / totalPortfolioValue) * 100;
+            updated[cls] = {
+              min: Math.max(0, Math.floor(currentPct - 5)),
+              max: Math.min(100, Math.ceil(currentPct + 5))
+            };
+            changed = true;
+          }
+        });
+        if (changed) setTargets(updated);
       }
     }
     if (isOpen) {
       setStep(1);
       setResult(null);
       setError(null);
+      setLocks({});
+      setLocksExpanded(false);
     }
   }, [isOpen]);
 
   const resetTargetsToCurrent = () => {
     const initialTargets = {};
-    const initialEnabled = new Set();
+    const initialEnabled = [];
     Object.keys(assetClassDetails).forEach(cls => {
       if (cls === 'Unknown') return;
       const currentPct = (assetClassDetails[cls].total / totalPortfolioValue) * 100;
@@ -45,10 +78,10 @@ export default function RebalanceModal({
         min: Math.max(0, Math.floor(currentPct - 5)),
         max: Math.min(100, Math.ceil(currentPct + 5))
       };
-      initialEnabled.add(cls);
+      initialEnabled.push(cls);
     });
     setTargets(initialTargets);
-    setEnabledTargets(initialEnabled);
+    setEnabledTargetsList(initialEnabled);
   };
 
   const handleTargetChange = (cls, field, value) => {
@@ -74,12 +107,28 @@ export default function RebalanceModal({
     });
   };
 
+  const toggleLock = (accountName, symbol, type) => {
+    setLocks(prev => {
+      const accLocks = prev[accountName] || {};
+      const symLocks = accLocks[symbol] || {};
+      const newSymLocks = { ...symLocks, [type]: !symLocks[type] };
+      if (!newSymLocks.noBuy && !newSymLocks.noSell) {
+        const { [symbol]: _, ...restAccLocks } = accLocks;
+        if (Object.keys(restAccLocks).length === 0) {
+          const { [accountName]: __, ...restLocks } = prev;
+          return restLocks;
+        }
+        return { ...prev, [accountName]: restAccLocks };
+      }
+      return { ...prev, [accountName]: { ...accLocks, [symbol]: newSymLocks } };
+    });
+  };
+
   const sortedAssetClasses = useMemo(
     () => Object.keys(assetClassDetails).filter(c => c !== 'Unknown').sort(),
     [assetClassDetails]
   );
 
-  // Count active locks
   const activeLockCount = useMemo(() => {
     let count = 0;
     Object.values(locks).forEach(accLocks => {
@@ -91,7 +140,6 @@ export default function RebalanceModal({
     return count;
   }, [locks]);
 
-  // Calculate and show preview
   const handleCalculate = () => {
     const normalizedTargets = {};
     Object.entries(targets).forEach(([cls, range]) => {
@@ -112,7 +160,6 @@ export default function RebalanceModal({
       return;
     }
 
-    // Check if any slack variables were used (elastic constraint fired)
     const usedSlacks = Object.entries(solverResult.solution).filter(
       ([key, val]) => key.startsWith('slack_') && val > 0.01
     );
@@ -133,12 +180,9 @@ export default function RebalanceModal({
     }
   };
 
-  // Compute post-trade allocations for preview
   const postTradeAllocations = useMemo(() => {
     if (!result) return {};
     const exposures = {};
-
-    // Current exposures
     accounts.forEach(account => {
       account.positions.forEach(pos => {
         const ratios = getAssetClassRatios(pos.Symbol, metadata);
@@ -149,8 +193,6 @@ export default function RebalanceModal({
         });
       });
     });
-
-    // Apply trades
     result.trades.forEach(trade => {
       const ratios = getAssetClassRatios(trade.symbol, metadata);
       Object.entries(ratios).forEach(([cls, ratio]) => {
@@ -162,11 +204,9 @@ export default function RebalanceModal({
         }
       });
     });
-
     return exposures;
   }, [result, accounts, metadata]);
 
-  // Allocation range visual (reused from old AutoRebalanceManager)
   const AllocationVisual = ({ current, min, max }) => (
     <div className="relative h-5 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-200">
       <div
@@ -198,11 +238,11 @@ export default function RebalanceModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                {step === 1 ? 'Set Target Allocations' : 'Review Proposed Trades'}
+                {step === 1 ? 'Configure Rebalance' : 'Review Proposed Trades'}
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
                 {step === 1
-                  ? 'Define your desired allocation ranges, then calculate optimal trades.'
+                  ? 'Set target ranges and trade locks, then calculate optimal trades.'
                   : 'Review the solver\'s recommended trades before applying.'}
               </p>
             </div>
@@ -219,7 +259,7 @@ export default function RebalanceModal({
         <div className="px-6 py-2 bg-gray-50/50 border-b border-gray-100 flex items-center gap-4 text-xs flex-shrink-0">
           <div className={`flex items-center gap-1.5 font-bold uppercase tracking-wider ${step === 1 ? 'text-blue-600' : 'text-gray-400'}`}>
             <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-            Targets
+            Configure
           </div>
           <ArrowRight className="w-3 h-3 text-gray-300" />
           <div className={`flex items-center gap-1.5 font-bold uppercase tracking-wider ${step === 2 ? 'text-blue-600' : 'text-gray-400'}`}>
@@ -239,7 +279,7 @@ export default function RebalanceModal({
                   <p className="font-medium">How it works</p>
                   <p className="text-xs text-blue-600 mt-0.5">
                     Set a <strong>Min</strong> and <strong>Max</strong> percentage for each asset class. The optimizer will calculate the minimum trades
-                    needed to bring your portfolio within these bounds, while respecting account boundaries and any trade locks you've set.
+                    needed to bring your portfolio within these bounds, while respecting account boundaries and any trade locks.
                   </p>
                 </div>
               </div>
@@ -261,17 +301,13 @@ export default function RebalanceModal({
                     <tr>
                       <th className="px-3 py-2.5 text-left rounded-l-lg w-[30%]">Asset Class</th>
                       <th className="px-3 py-2.5 text-center w-[40%]">Range vs. Current</th>
-                      <th className="px-3 py-2.5 text-right rounded-r-lg w-[30%]">
-                        <span className="inline-flex items-center gap-1" title="Target minimum and maximum allocation percentages">
-                          Min / Max %
-                        </span>
-                      </th>
+                      <th className="px-3 py-2.5 text-right rounded-r-lg w-[30%]">Min / Max %</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {sortedAssetClasses.map(cls => {
-                      const currentVal = assetClassDetails[cls].total;
-                      const currentPct = (currentVal / totalPortfolioValue) * 100;
+                      const currentVal = assetClassDetails[cls]?.total || 0;
+                      const currentPct = totalPortfolioValue > 0 ? (currentVal / totalPortfolioValue) * 100 : 0;
                       const range = targets[cls] || { min: 0, max: 0 };
                       const isEnabled = enabledTargets.has(cls);
                       const isDrifting = isEnabled && (currentPct < range.min || currentPct > range.max);
@@ -337,16 +373,100 @@ export default function RebalanceModal({
                 </table>
               </div>
 
-              {/* Lock summary */}
-              {activeLockCount > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-orange-50/50 rounded-lg border border-orange-100 text-xs text-orange-700">
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>
-                    <strong>{activeLockCount} trade lock{activeLockCount > 1 ? 's' : ''}</strong> active.
-                    The solver will respect these constraints. You can edit locks from the account tables on the main page.
-                  </span>
-                </div>
-              )}
+              {/* Trade Locks — collapsible */}
+              <div className="rounded-lg border border-gray-200 overflow-hidden">
+                <button
+                  onClick={() => setLocksExpanded(!locksExpanded)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`p-1.5 rounded-md ${activeLockCount > 0 ? 'bg-orange-100 text-orange-600' : 'bg-gray-200 text-gray-500'}`}>
+                      <Lock className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-gray-700">Trade Locks</span>
+                      <span className="text-xs text-gray-400 ml-2">
+                        {activeLockCount > 0
+                          ? `${activeLockCount} active`
+                          : 'None set'}
+                      </span>
+                    </div>
+                  </div>
+                  {locksExpanded
+                    ? <ChevronDown className="w-4 h-4 text-gray-400" />
+                    : <ChevronRight className="w-4 h-4 text-gray-400" />
+                  }
+                </button>
+
+                {locksExpanded && (
+                  <div className="border-t border-gray-200 max-h-[280px] overflow-y-auto">
+                    <div className="px-4 py-2 bg-gray-50/50 border-b border-gray-100">
+                      <p className="text-[10px] text-gray-500">
+                        Prevent the solver from buying or selling specific positions. Locks reset when you close this dialog.
+                      </p>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {accounts.map(account => (
+                        <div key={account.name}>
+                          <div className="px-4 py-2 bg-gray-50/30">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{account.name}</span>
+                          </div>
+                          <div className="divide-y divide-gray-50">
+                            {account.positions.map(pos => {
+                              const accLocks = locks[account.name] || {};
+                              const symLocks = accLocks[pos.Symbol] || {};
+                              const isNoBuy = !!symLocks.noBuy;
+                              const isNoSell = !!symLocks.noSell;
+                              return (
+                                <div key={pos.Symbol} className={`flex items-center justify-between px-4 py-2 ${isNoBuy || isNoSell ? 'bg-orange-50/30' : ''}`}>
+                                  <div>
+                                    <span className="text-sm font-medium text-gray-700">{pos.Symbol}</span>
+                                    <span className="text-[10px] text-gray-400 ml-2">{formatCurrency(pos.SimulatedValue)}</span>
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => toggleLock(account.name, pos.Symbol, 'noBuy')}
+                                      className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                                        isNoBuy
+                                          ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                                          : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50 hover:text-gray-600'
+                                      }`}
+                                    >
+                                      {isNoBuy ? <Lock className="w-3 h-3 inline mr-0.5" /> : <Unlock className="w-3 h-3 inline mr-0.5" />}
+                                      Buy
+                                    </button>
+                                    <button
+                                      onClick={() => toggleLock(account.name, pos.Symbol, 'noSell')}
+                                      className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border transition-colors ${
+                                        isNoSell
+                                          ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                                          : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-50 hover:text-gray-600'
+                                      }`}
+                                    >
+                                      {isNoSell ? <Lock className="w-3 h-3 inline mr-0.5" /> : <Unlock className="w-3 h-3 inline mr-0.5" />}
+                                      Sell
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {activeLockCount > 0 && (
+                      <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/30">
+                        <button
+                          onClick={() => setLocks({})}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider"
+                        >
+                          Clear All Locks
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {error && (
                 <div className="flex items-center gap-2 p-3 bg-red-50 rounded-lg border border-red-100 text-xs text-red-700">
@@ -417,7 +537,6 @@ export default function RebalanceModal({
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* Group trades by account */}
                     {Object.entries(
                       result.trades.reduce((acc, trade) => {
                         if (!acc[trade.accountId]) acc[trade.accountId] = [];
@@ -468,7 +587,7 @@ export default function RebalanceModal({
                 onClick={() => { setStep(1); setResult(null); }}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <ArrowLeft className="w-4 h-4" /> Back to Targets
+                <ArrowLeft className="w-4 h-4" /> Back
               </button>
             )}
           </div>

@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowUp, ArrowDown, ArrowUpDown, Trash2, RefreshCw, Lock, Unlock, X } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Trash2, RefreshCw, X, Info } from 'lucide-react';
 import { formatCurrency, formatPercent } from '../utils/currency';
 import { calculateAssetClassStats } from '../utils/calculations';
 import AllocationBar from './AllocationBar';
 
-const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, onResetAccount, metadata, colors, locks = {}, onToggleLock }) => {
+const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAdjustment, portfolioTotal, onAdjustmentChange, onRemovePosition, onResetAccount, metadata, colors }) => {
   const [sortConfig, setSortConfig] = useState({ key: 'SimulatedValue', direction: 'desc' });
   const [flashErrors, setFlashErrors] = useState({});
   const [editingAdjustment, setEditingAdjustment] = useState(null); // symbol being edited
@@ -126,10 +126,25 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
               <HeaderCell label="Asset Class" sortKey="Asset Class" />
               <HeaderCell label="Dollar Value" sortKey="SimulatedValue" align="right" />
               <HeaderCell label="Account %" sortKey="PercentOfAccount" align="right" />
-              <HeaderCell label="Adjustment" sortKey="adjustment" align="right" className="bg-slate-50/50" />
-              {onToggleLock && (
-                <th className="py-4 px-4 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">Locks</th>
-              )}
+              <th 
+                className="py-4 px-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest cursor-pointer group hover:bg-gray-50 transition-colors bg-slate-50/50"
+                onClick={() => requestSort('adjustment')}
+                title="Simulated buy/sell changes from rebalancing or manual edits"
+              >
+                <div className="flex items-center gap-1.5 justify-end">
+                  <span className="relative">
+                    Adjustment
+                    <Info className="w-3 h-3 inline ml-1 text-gray-300 group-hover:text-blue-400 transition-colors" />
+                  </span>
+                  <span className="inline-flex">
+                    {sortConfig.key === 'adjustment' ? (
+                      sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-600" /> : <ArrowDown className="w-3 h-3 text-blue-600" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-gray-200 opacity-0 group-hover:opacity-100" />
+                    )}
+                  </span>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 bg-white">
@@ -145,14 +160,10 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
 
                 const description = meta && typeof meta === 'object' && meta.description ? meta.description : row.Description || '';
                 
-                const symLocks = locks[row.Symbol] || {};
-                const isNoBuy = !!symLocks.noBuy;
-                const isNoSell = !!symLocks.noSell;
-                const hasLock = isNoBuy || isNoSell;
                 const isEditing = editingAdjustment === row.Symbol;
 
                 return (
-                  <tr key={row.Symbol} className={`hover:bg-blue-50/20 transition-colors group ${hasLock ? 'bg-orange-50/20' : ''}`}>
+                  <tr key={row.Symbol} className="hover:bg-blue-50/20 transition-colors group">
                     <td className="whitespace-nowrap py-5 pl-8 pr-4 text-sm font-medium text-gray-900">
                       <div className="font-bold tracking-tight text-base">{row.Symbol}</div>
                       <div className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider truncate max-w-[180px] mt-0.5" title={description}>{description}</div>
@@ -239,36 +250,7 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
                         </div>
                       )}
                     </td>
-                    {onToggleLock && (
-                      <td className="whitespace-nowrap py-4 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => onToggleLock(name, row.Symbol, 'noBuy')}
-                            className={`p-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider border transition-all ${
-                              isNoBuy 
-                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
-                                : 'bg-white text-gray-300 border-gray-100 hover:bg-gray-50 hover:text-gray-500 hover:border-gray-200'
-                            }`}
-                            title={isNoBuy ? 'Unlock buying' : 'Lock buying'}
-                          >
-                            {isNoBuy ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                            <span className="block mt-0.5 leading-none">Buy</span>
-                          </button>
-                          <button
-                            onClick={() => onToggleLock(name, row.Symbol, 'noSell')}
-                            className={`p-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider border transition-all ${
-                              isNoSell 
-                                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' 
-                                : 'bg-white text-gray-300 border-gray-100 hover:bg-gray-50 hover:text-gray-500 hover:border-gray-200'
-                            }`}
-                            title={isNoSell ? 'Unlock selling' : 'Lock selling'}
-                          >
-                            {isNoSell ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
-                            <span className="block mt-0.5 leading-none">Sell</span>
-                          </button>
-                        </div>
-                      </td>
-                    )}
+
                   </tr>
                 );
             })}
