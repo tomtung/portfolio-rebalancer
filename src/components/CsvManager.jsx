@@ -543,7 +543,7 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
                                                                 {isSplit ? (
                                                                     <div className="flex flex-wrap gap-1 mt-0.5">
                                                                         {Object.entries(assetClass).map(([k, v]) => (
-                                                                            <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-50 text-indigo-700 leading-none">
+                                                                            <span key={k} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium leading-none ${k === 'Unknown' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-100 text-gray-800'}`}>
                                                                                 {k}: {Math.round(v*100)}%
                                                                             </span>
                                                                         ))}

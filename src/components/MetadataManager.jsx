@@ -362,13 +362,13 @@ const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata }, ref
                                             isSplit ? (
                                                 <div className="flex flex-wrap gap-1">
                                                     {Object.entries(assetClass).map(([k, v]) => (
-                                                        <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700">
+                                                        <span key={k} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${k === 'Unknown' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-100 text-gray-800'}`}>
                                                             {k}: {Math.round(v*100)}%
                                                         </span>
                                                     ))}
                                                 </div>
                                             ) : (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${assetClass ? 'bg-gray-100 text-gray-800' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${(!assetClass || assetClass === 'Unknown') ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-100 text-gray-800'}`}>
                                                     {assetClass || 'Unknown'}
                                                 </span>
                                             )
