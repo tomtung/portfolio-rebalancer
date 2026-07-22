@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Tag, Search, Check, X, Code, Split, Plus, Trash2, AlertCircle } from 'lucide-react';
 import AutoResizingTextarea from './AutoResizingTextarea';
 import SplitAllocator from './SplitAllocator';
 
-export default function MetadataManager({ symbols, metadata, onUpdateMetadata, onReset }) {
+const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata, onReset }, ref) => {
   const [editingCell, setEditingCell] = useState(null); // { symbol, field }
   const [editValue, setEditValue] = useState('');
   const [isSplitMode, setIsSplitMode] = useState(false);
@@ -17,6 +17,19 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
   // Highlighting state
   const [highlightedSymbol, setHighlightedSymbol] = useState(null);
   const tableContainerRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+      applyChanges: () => {
+          if (showRawJson) {
+              try {
+                  const parsed = JSON.parse(rawJsonValue);
+                  onUpdateMetadata(parsed);
+              } catch (e) {
+                  console.error("Invalid JSON in metadata");
+              }
+          }
+      }
+  }));
 
   // Extract unique existing asset classes for suggestions
   const existingAssetClasses = useMemo(() => {
@@ -197,16 +210,6 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
       setRawJsonValue(e.target.value);
   };
 
-  const saveRawJson = () => {
-      try {
-          const parsed = JSON.parse(rawJsonValue);
-          onUpdateMetadata(parsed);
-          setShowRawJson(false);
-      } catch (e) {
-          alert("Invalid JSON");
-      }
-  };
-
   const toggleRawJson = () => {
       if (!showRawJson) {
           setRawJsonValue(JSON.stringify(metadata, null, 2));
@@ -255,9 +258,6 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
                 onChange={handleRawJsonChange}
                 className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto min-h-[300px] flex-grow"
               />
-              <div className="mt-2 flex justify-end flex-shrink-0">
-                  <button onClick={saveRawJson} className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700">Apply JSON</button>
-              </div>
           </div>
       ) : (
         <div className="flex flex-col flex-grow min-h-0">
@@ -454,4 +454,6 @@ export default function MetadataManager({ symbols, metadata, onUpdateMetadata, o
       )}
     </div>
   );
-}
+});
+
+export default MetadataManager;

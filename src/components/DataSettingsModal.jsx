@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, FileText, Tag } from 'lucide-react';
 import CsvManager from './CsvManager';
 import MetadataManager from './MetadataManager';
@@ -15,6 +15,18 @@ export default function DataSettingsModal({
   allSymbols
 }) {
   const [activeTab, setActiveTab] = useState('csv');
+  const csvManagerRef = useRef(null);
+  const metadataManagerRef = useRef(null);
+
+  const handleDone = () => {
+    if (csvManagerRef.current) {
+      csvManagerRef.current.applyChanges();
+    }
+    if (metadataManagerRef.current) {
+      metadataManagerRef.current.applyChanges();
+    }
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -64,29 +76,31 @@ export default function DataSettingsModal({
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'csv' && (
+          <div className={activeTab === 'csv' ? 'block h-full' : 'hidden'}>
             <CsvManager
+              ref={csvManagerRef}
               csvData={csvData}
               onUpdateCsv={onUpdateCsv}
               onReset={onResetCsv}
               metadata={metadata}
               onUpdateMetadata={onUpdateMetadata}
             />
-          )}
-          {activeTab === 'metadata' && (
+          </div>
+          <div className={activeTab === 'metadata' ? 'block h-full' : 'hidden'}>
             <MetadataManager
+              ref={metadataManagerRef}
               symbols={allSymbols}
               metadata={metadata}
               onUpdateMetadata={onUpdateMetadata}
               onReset={onResetMeta}
             />
-          )}
+          </div>
         </div>
 
         {/* Footer */}
         <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/50 flex justify-end flex-shrink-0">
           <button
-            onClick={onClose}
+            onClick={handleDone}
             className="px-5 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors"
           >
             Done

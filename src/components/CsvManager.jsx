@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Plus, Trash2, Code, RotateCcw, Check, X } from 'lucide-react';
 import { parseCSVLine, normalizeCsv } from '../utils/csvParser';
 import { parseCurrency } from '../utils/currency';
 import AutoResizingTextarea from './AutoResizingTextarea';
 
-export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, onUpdateMetadata }) {
+const CsvManager = forwardRef(({ csvData, onUpdateCsv, onReset, metadata, onUpdateMetadata }, ref) => {
   const [showRaw, setShowRaw] = useState(false);
   const [rows, setRows] = useState([]);
   const [headers, setHeaders] = useState([]);
@@ -25,6 +25,23 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
   useEffect(() => {
     setRawText(csvData);
   }, [csvData]);
+
+  useImperativeHandle(ref, () => ({
+      applyChanges: () => {
+          if (showRaw) {
+              try {
+                  const { newCsv, newMetadata } = normalizeCsv(rawText, metadata);
+                  onUpdateCsv(newCsv);
+                  if (onUpdateMetadata) {
+                      onUpdateMetadata(newMetadata);
+                  }
+                  setRawText(newCsv);
+              } catch (e) {
+                  console.error("CSV normalization failed:", e);
+              }
+          }
+      }
+  }));
 
   const requiredColumns = ['Account Name', 'Symbol', 'Current value'];
 
@@ -359,20 +376,6 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
       setRawText(newCsv);
   };
 
-  const handleApply = () => {
-      try {
-          const { newCsv, newMetadata, ignoredCount } = normalizeCsv(rawText, metadata);
-          onUpdateCsv(newCsv);
-          if (onUpdateMetadata) {
-              onUpdateMetadata(newMetadata);
-          }
-          setRawText(newCsv);
-          alert(`CSV data applied. ${ignoredCount} rows were ignored.`);
-      } catch (e) {
-          alert(e.message);
-      }
-  };
-
   const handleRawChange = (e) => {
       setRawText(e.target.value);
       onUpdateCsv(e.target.value);
@@ -438,14 +441,6 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
                 onChange={handleRawChange}
                 className="w-full p-3 text-xs font-mono bg-gray-50 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none whitespace-pre overflow-x-auto min-h-[300px]"
               />
-              <div className="mt-3 flex justify-end">
-                  <button
-                    onClick={handleApply}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 transition-colors"
-                  >
-                      <Check className="w-4 h-4" /> Apply & Normalize
-                  </button>
-              </div>
           </div>
       ) : (
         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
@@ -605,4 +600,6 @@ export default function CsvManager({ csvData, onUpdateCsv, onReset, metadata, on
       )}
     </div>
   );
-}
+});
+
+export default CsvManager;
