@@ -202,7 +202,7 @@ export default function App() {
               <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
                 <PieChart className="w-8 h-8 text-white" />
               </div>
-              Portfolio Rebalance Helper
+              Portfolio Rebalancer
             </h1>
             <p className="text-gray-500 text-sm mt-2 font-medium tracking-wide uppercase">
               Local in-browser asset allocation simulation
@@ -213,7 +213,7 @@ export default function App() {
                onClick={() => setShowDataSettings(true)}
                className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition-all hover:shadow-md"
              >
-               <Settings className="w-4 h-4" /> Data Settings
+               <Settings className="w-4 h-4" /> Edit Data
              </button>
              <button
                onClick={() => setShowRebalance(true)}

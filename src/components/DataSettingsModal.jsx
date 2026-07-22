@@ -35,7 +35,7 @@ export default function DataSettingsModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight">Data Settings</h2>
+            <h2 className="text-lg font-bold text-gray-900 tracking-tight">Edit Data</h2>
             <p className="text-xs text-gray-500 mt-0.5">Edit portfolio positions and symbol metadata</p>
           </div>
           <button

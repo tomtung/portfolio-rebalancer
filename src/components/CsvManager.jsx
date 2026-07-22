@@ -427,6 +427,7 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
                       <li><strong>Aggregation:</strong> Duplicate (Account + Symbol) rows are automatically summed together.</li>
                       <li><strong>Metadata:</strong> If a <code>Description</code> column exists, non-empty values will update missing descriptions in your Symbol Metadata.</li>
                       <li><strong>Validation:</strong> Aggregated values must be non-negative. Short positions are not supported.</li>
+                      <li><strong>Zero Values:</strong> Positions with $0 are kept. You can use these as placeholders to allow buying into those symbols during rebalancing.</li>
                       <li><strong>Cleanup:</strong> Rows missing a Symbol are ignored. All other extra columns are discarded.</li>
                   </ul>
               </div>
