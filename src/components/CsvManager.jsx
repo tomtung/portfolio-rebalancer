@@ -200,14 +200,30 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
           const newSym = colName === 'Symbol' ? tempValue : rows[rowIndex][symIdx];
 
           // Check duplicate in other rows
-          const isDuplicate = rows.some((r, idx) => 
+          const duplicateIndex = rows.findIndex((r, idx) => 
               idx !== rowIndex && 
               r[accIdx]?.trim() === newAcc?.trim() && 
               r[symIdx]?.trim() === newSym?.trim()
           );
 
-          if (isDuplicate) {
-              setEditingCell(prev => ({ ...prev, error: true }));
+          if (duplicateIndex !== -1) {
+              const valIdx = columnIndices['Current value'];
+              const currentRowValue = parseCurrency(rows[rowIndex][valIdx] || '0');
+              const duplicateRowValue = parseCurrency(rows[duplicateIndex][valIdx] || '0');
+              const newSum = currentRowValue + duplicateRowValue;
+              
+              const newRows = [...rows];
+              newRows[duplicateIndex] = [...newRows[duplicateIndex]];
+              newRows[duplicateIndex][valIdx] = formatValue(newSum.toString());
+              
+              // Remove the row that was being edited (since it's merged into the duplicate)
+              newRows.splice(rowIndex, 1);
+              
+              setRows(newRows);
+              const newCsv = generateCsvString(headers, newRows);
+              onUpdateCsv(newCsv);
+              setRawText(newCsv);
+              setEditingCell(null);
               return;
           }
       }
@@ -296,20 +312,15 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
         }
       }
 
+      let duplicateIndex = -1;
       if (accountName && symbol) {
         const accountIdx = columnIndices['Account Name'];
         const symbolIdx = columnIndices['Symbol'];
         
-        const isDuplicate = rows.some(row => 
+        duplicateIndex = rows.findIndex(row => 
             row[accountIdx]?.trim() === accountName && 
             row[symbolIdx]?.trim() === symbol
         );
-
-        if (isDuplicate) {
-            newErrors['Account Name'] = true;
-            newErrors['Symbol'] = true;
-            hasError = true;
-        }
       }
 
       if (hasError) {
@@ -317,34 +328,41 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
           return;
       }
 
-      // Create new row array matching headers order
-      // If we are in visual mode and somehow headers are different, we try to map.
-      // But usually this view forces the 3 columns or operates on existing headers.
-      // We will map to existing headers.
-      const newRowArr = headers.map(h => {
-          // Find matching key case-insensitive
-          const key = Object.keys(addingRow).find(k => k.toLowerCase() === h.toLowerCase());
-          return key ? addingRow[key] : '';
-      });
-
-      const newRows = [...rows, newRowArr];
-
-      // Sort
+      let newRows = [...rows];
       const accountIdx = columnIndices['Account Name'];
       const symbolIdx = columnIndices['Symbol'];
+      const valIdx = columnIndices['Current value'];
 
-      if (accountIdx !== undefined && symbolIdx !== undefined) {
-          newRows.sort((a, b) => {
-                const accA = (a[accountIdx] || '').toLowerCase();
-                const accB = (b[accountIdx] || '').toLowerCase();
-                if (accA !== accB) return accA.localeCompare(accB);
-                const symA = (a[symbolIdx] || '').toLowerCase();
-                const symB = (b[symbolIdx] || '').toLowerCase();
-                return symA.localeCompare(symB);
+      if (duplicateIndex !== -1) {
+          const duplicateRowValue = parseCurrency(rows[duplicateIndex][valIdx] || '0');
+          const newRowValue = parseCurrency(valueStr || '0');
+          const newSum = newRowValue + duplicateRowValue;
+          
+          newRows[duplicateIndex] = [...newRows[duplicateIndex]];
+          newRows[duplicateIndex][valIdx] = formatValue(newSum.toString());
+      } else {
+          // Create new row array matching headers order
+          const newRowArr = headers.map(h => {
+              const key = Object.keys(addingRow).find(k => k.toLowerCase() === h.toLowerCase());
+              return key ? addingRow[key] : '';
           });
+
+          newRows.push(newRowArr);
+
+          // Sort
+          if (accountIdx !== undefined && symbolIdx !== undefined) {
+              newRows.sort((a, b) => {
+                    const accA = (a[accountIdx] || '').toLowerCase();
+                    const accB = (b[accountIdx] || '').toLowerCase();
+                    if (accA !== accB) return accA.localeCompare(accB);
+                    const symA = (a[symbolIdx] || '').toLowerCase();
+                    const symB = (b[symbolIdx] || '').toLowerCase();
+                    return symA.localeCompare(symB);
+              });
+          }
       }
 
-      // Find index of new row
+      // Find index of modified/new row
       const newIndex = newRows.findIndex(r => 
           r[accountIdx] === accountName && r[symbolIdx] === symbol
       );
