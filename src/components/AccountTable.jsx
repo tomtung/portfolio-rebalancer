@@ -41,6 +41,14 @@ const AccountTable = ({ name, positions, totalValue, originalTotalValue, totalAd
            aValue = a[sortConfig.key];
            bValue = b[sortConfig.key];
         }
+
+        if (sortConfig.key === 'adjustment') {
+            const aHasAdj = aValue !== 0;
+            const bHasAdj = bValue !== 0;
+            if (aHasAdj && !bHasAdj) return -1;
+            if (!aHasAdj && bHasAdj) return 1;
+        }
+
         if (typeof aValue === 'string') {
             aValue = aValue.toLowerCase();
             bValue = bValue.toLowerCase();
