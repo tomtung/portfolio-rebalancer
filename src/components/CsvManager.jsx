@@ -449,16 +449,16 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
             <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                     <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[25%]">
                             Account Name
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[55%]">
                             Symbol
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[20%]">
                             Current value
                         </th>
-                        <th className="w-20"></th>
+                        <th className="w-12"></th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
