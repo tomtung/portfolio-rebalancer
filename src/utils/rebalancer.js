@@ -133,7 +133,7 @@ export const calculateRebalancing = (accounts, metadata, targetRanges, locks = {
   const solution = solver.Solve(model);
 
   // 5. Parse Results
-  const trades = [];
+  const rawTrades = [];
   
   if (solution.feasible) {
     Object.entries(solution).forEach(([key, val]) => {
@@ -143,16 +143,58 @@ export const calculateRebalancing = (accounts, metadata, targetRanges, locks = {
           const parts = key.split('_');
           const accId = parts[1];
           const sym = parts.slice(2).join('_');
-          trades.push({ type: 'BUY', accountId: accId, symbol: sym, amount: roundedVal });
+          rawTrades.push({ type: 'BUY', accountId: accId, symbol: sym, amount: roundedVal });
         } else if (key.startsWith('sell_')) {
           const parts = key.split('_');
           const accId = parts[1];
           const sym = parts.slice(2).join('_');
-          trades.push({ type: 'SELL', accountId: accId, symbol: sym, amount: roundedVal });
+          rawTrades.push({ type: 'SELL', accountId: accId, symbol: sym, amount: roundedVal });
         }
       }
     });
   }
+
+  // Adjust for rounding differences per account to ensure net cash flow is 0
+  const tradesByAccount = {};
+  rawTrades.forEach(t => {
+    if (!tradesByAccount[t.accountId]) tradesByAccount[t.accountId] = [];
+    tradesByAccount[t.accountId].push(t);
+  });
+
+  const trades = [];
+  Object.values(tradesByAccount).forEach(accTrades => {
+    let netCash = 0;
+    accTrades.forEach(t => {
+      if (t.type === 'SELL') netCash += t.amount;
+      if (t.type === 'BUY') netCash -= t.amount;
+    });
+
+    if (netCash !== 0 && accTrades.length > 0) {
+      // Sort trades descending to absorb the difference in the largest trade
+      accTrades.sort((a, b) => b.amount - a.amount);
+      
+      // Try to adjust a BUY trade first
+      let buyTrade = accTrades.find(t => t.type === 'BUY');
+      if (buyTrade && (buyTrade.amount + netCash > 0)) {
+         buyTrade.amount += netCash;
+         netCash = 0;
+      }
+      
+      // If still unbalanced, adjust a SELL trade
+      if (netCash !== 0) {
+         let sellTrade = accTrades.find(t => t.type === 'SELL');
+         if (sellTrade && (sellTrade.amount - netCash > 0)) {
+            sellTrade.amount -= netCash;
+            netCash = 0;
+         }
+      }
+    }
+    
+    // Add trades that are still > 0 after adjustments
+    accTrades.forEach(t => {
+      if (t.amount > 0) trades.push(t);
+    });
+  });
 
   return {
     feasible: solution.feasible,
