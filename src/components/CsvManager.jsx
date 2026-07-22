@@ -509,7 +509,57 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
                                                 </div>
                                             </div>
                                         ) : (
-                                            <span className="block w-full min-h-[20px]">{val}</span>
+                                            col === 'Symbol' ? (
+                                                <div className="flex flex-col w-full min-h-[20px]">
+                                                    <span className="block font-medium">{val}</span>
+                                                    {val && metadata && (() => {
+                                                        const mVal = metadata[val];
+                                                        let assetClass = null;
+                                                        let description = null;
+                                                        if (mVal) {
+                                                            if (typeof mVal === 'object') {
+                                                                assetClass = mVal.assetClass || null;
+                                                                if (typeof assetClass === 'object' && assetClass !== null && Object.keys(assetClass).length === 0) {
+                                                                    assetClass = null;
+                                                                }
+                                                                description = mVal.description || null;
+                                                                if (!('assetClass' in mVal) && !('description' in mVal)) {
+                                                                    if (Object.keys(mVal).length > 0) assetClass = mVal;
+                                                                }
+                                                            } else {
+                                                                assetClass = mVal;
+                                                            }
+                                                        }
+
+                                                        if (!assetClass) {
+                                                            assetClass = "Unknown";
+                                                        }
+
+                                                        const isSplit = typeof assetClass === 'object' && assetClass !== null;
+
+                                                        return (
+                                                            <div className="flex flex-col gap-0.5 mt-1">
+                                                                {description && <span className="text-[10px] text-gray-500 leading-tight">{description}</span>}
+                                                                {isSplit ? (
+                                                                    <div className="flex flex-wrap gap-1 mt-0.5">
+                                                                        {Object.entries(assetClass).map(([k, v]) => (
+                                                                            <span key={k} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-indigo-50 text-indigo-700 leading-none">
+                                                                                {k}: {Math.round(v*100)}%
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium leading-none w-max ${assetClass === 'Unknown' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-100 text-gray-800'}`}>
+                                                                        {assetClass}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            ) : (
+                                                <span className="block w-full min-h-[20px]">{val}</span>
+                                            )
                                         )}
                                     </td>
                                 );
