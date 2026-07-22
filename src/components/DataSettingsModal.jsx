@@ -8,10 +8,8 @@ export default function DataSettingsModal({
   onClose,
   csvData,
   onUpdateCsv,
-  onResetCsv,
   metadata,
   onUpdateMetadata,
-  onResetMeta,
   allSymbols
 }) {
   const [activeTab, setActiveTab] = useState('csv');
@@ -81,7 +79,6 @@ export default function DataSettingsModal({
               ref={csvManagerRef}
               csvData={csvData}
               onUpdateCsv={onUpdateCsv}
-              onReset={onResetCsv}
               metadata={metadata}
               onUpdateMetadata={onUpdateMetadata}
             />
@@ -92,7 +89,6 @@ export default function DataSettingsModal({
               symbols={allSymbols}
               metadata={metadata}
               onUpdateMetadata={onUpdateMetadata}
-              onReset={onResetMeta}
             />
           </div>
         </div>

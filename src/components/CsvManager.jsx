@@ -4,7 +4,7 @@ import { parseCSVLine, normalizeCsv } from '../utils/csvParser';
 import { parseCurrency } from '../utils/currency';
 import AutoResizingTextarea from './AutoResizingTextarea';
 
-const CsvManager = forwardRef(({ csvData, onUpdateCsv, onReset, metadata, onUpdateMetadata }, ref) => {
+const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadata }, ref) => {
   const [showRaw, setShowRaw] = useState(false);
   const [rows, setRows] = useState([]);
   const [headers, setHeaders] = useState([]);
@@ -415,12 +415,6 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, onReset, metadata, onUpda
              >
                  <Code className="w-3 h-3" /> {showRaw ? "Visual Editor" : "Raw CSV"}
              </button>
-             <button 
-                onClick={onReset}
-                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
-            >
-                <RotateCcw className="w-3 h-3" /> Reset
-            </button>
         </div>
       </div>
 

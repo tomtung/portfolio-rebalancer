@@ -153,18 +153,12 @@ export default function App() {
   const confirmReset = () => {
       if (confirmAction === 'sim') {
           setAdjustments({});
-      } else if (confirmAction === 'csv') {
-          setRawData(INITIAL_CSV_DATA);
-      } else if (confirmAction === 'meta') {
-          setRawMetadata(INITIAL_METADATA_JSON);
       }
       setConfirmAction(null);
   };
 
   const getConfirmMessage = () => {
       if (confirmAction === 'sim') return "Are you sure you want to clear all simulation adjustments?";
-      if (confirmAction === 'csv') return "Are you sure you want to reset the CSV data to the default demo data? This will overwrite your changes.";
-      if (confirmAction === 'meta') return "Are you sure you want to reset the asset class metadata to defaults? This will overwrite your changes.";
       return "";
   };
 
@@ -186,10 +180,8 @@ export default function App() {
           onClose={() => setShowDataSettings(false)}
           csvData={rawData}
           onUpdateCsv={setRawData}
-          onResetCsv={() => setConfirmAction('csv')}
           metadata={metadata}
           onUpdateMetadata={(newMeta) => setRawMetadata(JSON.stringify(newMeta, null, 2))}
-          onResetMeta={() => setConfirmAction('meta')}
           allSymbols={allSymbols}
         />
 

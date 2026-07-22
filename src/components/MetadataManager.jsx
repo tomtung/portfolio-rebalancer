@@ -3,7 +3,7 @@ import { Tag, Search, Check, X, Code, Split, Plus, Trash2, AlertCircle } from 'l
 import AutoResizingTextarea from './AutoResizingTextarea';
 import SplitAllocator from './SplitAllocator';
 
-const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata, onReset }, ref) => {
+const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata }, ref) => {
   const [editingCell, setEditingCell] = useState(null); // { symbol, field }
   const [editValue, setEditValue] = useState('');
   const [isSplitMode, setIsSplitMode] = useState(false);
@@ -239,12 +239,6 @@ const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata, onRes
              >
                  <Code className="w-3 h-3" /> {showRawJson ? "Visual Editor" : "Raw JSON"}
              </button>
-             <button 
-                onClick={onReset}
-                className="text-xs text-blue-600 hover:text-blue-800"
-            >
-                Reset
-            </button>
         </div>
       </div>
 
