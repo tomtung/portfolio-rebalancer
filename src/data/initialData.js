@@ -243,6 +243,6 @@ export const INITIAL_METADATA_JSON = JSON.stringify({
     },
     "description": "Vanguard Balanced Index Fund Institutional"
   },
-  "APPL": "US Equities / Large Cap",
+  "AAPL": "US Equities / Large Cap",
   "GLD": "Commodities"
 }, null, 2);
