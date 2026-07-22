@@ -18,7 +18,7 @@ export default function RebalanceModal({
   const [step, setStep] = useState(1);
   const [targets, setTargets] = usePersistentObject('portfolio_targets_v2', {});
   const [enabledTargetsList, setEnabledTargetsList] = usePersistentObject('portfolio_enabled_targets_v2', []);
-  const [locks, setLocks] = useState({});
+  const [locks, setLocks] = usePersistentObject('portfolio_locks_v2', {});
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
@@ -62,7 +62,6 @@ export default function RebalanceModal({
       setStep(1);
       setResult(null);
       setError(null);
-      setLocks({});
     }
   }, [isOpen]);
 
@@ -431,7 +430,6 @@ export default function RebalanceModal({
                 <p className="text-xs text-orange-700">
                   Prevent the solver from buying or selling specific positions or entire accounts.
                   Leave everything unlocked to give the optimizer maximum flexibility.
-                  <strong className="block mt-1">Locks reset when you close this dialog.</strong>
                 </p>
               </div>
 
