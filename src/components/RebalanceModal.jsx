@@ -142,11 +142,20 @@ export default function RebalanceModal({
     const account = accounts.find(a => a.name === accountName);
     if (!account) return;
     const accLocks = locks[accountName] || {};
-    // If all already locked, unlock all; otherwise lock all
-    const allLocked = account.positions.every(pos => accLocks[pos.Symbol]?.[type]);
+    
+    const nonCashPositions = account.positions.filter(pos => {
+        const ratios = getAssetClassRatios(pos.Symbol, metadata);
+        return !Object.keys(ratios).some(k => k.toLowerCase() === 'cash');
+    });
+    
+    if (nonCashPositions.length === 0) return;
+    
+    // If all non-cash already locked, unlock all; otherwise lock all
+    const allLocked = nonCashPositions.every(pos => accLocks[pos.Symbol]?.[type]);
+    
     setLocks(prev => {
       const newAccLocks = { ...prev[accountName] };
-      account.positions.forEach(pos => {
+      nonCashPositions.forEach(pos => {
         const symLocks = newAccLocks[pos.Symbol] || {};
         const newSymLocks = { ...symLocks, [type]: !allLocked };
         if (!newSymLocks.noBuy && !newSymLocks.noSell) {
@@ -429,9 +438,17 @@ export default function RebalanceModal({
               <div className="space-y-3">
                 {accounts.map(account => {
                   const accLocks = locks[account.name] || {};
-                  const allNoBuy = account.positions.every(p => accLocks[p.Symbol]?.noBuy);
-                  const allNoSell = account.positions.every(p => accLocks[p.Symbol]?.noSell);
-                  const anyLocked = account.positions.some(p => accLocks[p.Symbol]?.noBuy || accLocks[p.Symbol]?.noSell);
+                  
+                  const nonCashPositions = account.positions.filter(pos => {
+                      const ratios = getAssetClassRatios(pos.Symbol, metadata);
+                      return !Object.keys(ratios).some(k => k.toLowerCase() === 'cash');
+                  });
+
+                  if (nonCashPositions.length === 0) return null;
+
+                  const allNoBuy = nonCashPositions.every(p => accLocks[p.Symbol]?.noBuy);
+                  const allNoSell = nonCashPositions.every(p => accLocks[p.Symbol]?.noSell);
+                  const anyLocked = nonCashPositions.some(p => accLocks[p.Symbol]?.noBuy || accLocks[p.Symbol]?.noSell);
 
                   return (
                     <div key={account.name} className={`rounded-xl border overflow-hidden transition-colors ${anyLocked ? 'border-orange-200 bg-orange-50/20' : 'border-gray-200'}`}>
@@ -467,10 +484,11 @@ export default function RebalanceModal({
 
                       {/* Per-position rows */}
                       <div className="divide-y divide-gray-50">
-                        {account.positions.map(pos => {
+                        {nonCashPositions.map(pos => {
                           const symLocks = accLocks[pos.Symbol] || {};
                           const isNoBuy = !!symLocks.noBuy;
                           const isNoSell = !!symLocks.noSell;
+
                           return (
                             <div key={pos.Symbol} className={`flex items-center justify-between px-4 py-2.5 ${isNoBuy || isNoSell ? 'bg-orange-50/40' : 'hover:bg-gray-50/50'} transition-colors`}>
                               <div>
