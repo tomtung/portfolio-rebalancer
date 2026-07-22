@@ -23,11 +23,13 @@ const MetadataManager = forwardRef(({ symbols, metadata, onUpdateMetadata }, ref
           if (showRawJson) {
               try {
                   const parsed = JSON.parse(rawJsonValue);
-                  onUpdateMetadata(parsed);
+                  return { metadata: parsed };
               } catch (e) {
                   console.error("Invalid JSON in metadata");
+                  return null;
               }
           }
+          return null;
       }
   }));
 

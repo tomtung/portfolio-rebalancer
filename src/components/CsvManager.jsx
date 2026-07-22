@@ -31,15 +31,14 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
           if (showRaw) {
               try {
                   const { newCsv, newMetadata } = normalizeCsv(rawText, metadata);
-                  onUpdateCsv(newCsv);
-                  if (onUpdateMetadata) {
-                      onUpdateMetadata(newMetadata);
-                  }
                   setRawText(newCsv);
+                  return { csv: newCsv, metadata: newMetadata };
               } catch (e) {
                   console.error("CSV normalization failed:", e);
+                  return null;
               }
           }
+          return null;
       }
   }));
 

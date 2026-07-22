@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, FileText, Tag } from 'lucide-react';
 import CsvManager from './CsvManager';
 import MetadataManager from './MetadataManager';
@@ -12,16 +12,41 @@ export default function DataSettingsModal({
   onUpdateMetadata,
   allSymbols
 }) {
+  const [localCsv, setLocalCsv] = useState(csvData);
+  const [localMetadata, setLocalMetadata] = useState(metadata);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalCsv(csvData);
+      setLocalMetadata(metadata);
+    }
+  }, [isOpen, csvData, metadata]);
+
   const [activeTab, setActiveTab] = useState('csv');
   const csvManagerRef = useRef(null);
   const metadataManagerRef = useRef(null);
 
   const handleDone = () => {
+    let finalCsv = localCsv;
+    let finalMeta = localMetadata;
+
     if (csvManagerRef.current) {
-      csvManagerRef.current.applyChanges();
+      const result = csvManagerRef.current.applyChanges();
+      if (result) {
+        if (result.csv) finalCsv = result.csv;
+        if (result.metadata) finalMeta = result.metadata;
+      }
     }
     if (metadataManagerRef.current) {
-      metadataManagerRef.current.applyChanges();
+      const result = metadataManagerRef.current.applyChanges();
+      if (result && result.metadata) {
+        finalMeta = result.metadata;
+      }
+    }
+    
+    onUpdateCsv(finalCsv);
+    if (onUpdateMetadata) {
+      onUpdateMetadata(finalMeta);
     }
     onClose();
   };
@@ -77,18 +102,18 @@ export default function DataSettingsModal({
           <div className={activeTab === 'csv' ? 'block h-full' : 'hidden'}>
             <CsvManager
               ref={csvManagerRef}
-              csvData={csvData}
-              onUpdateCsv={onUpdateCsv}
-              metadata={metadata}
-              onUpdateMetadata={onUpdateMetadata}
+              csvData={localCsv}
+              onUpdateCsv={setLocalCsv}
+              metadata={localMetadata}
+              onUpdateMetadata={setLocalMetadata}
             />
           </div>
           <div className={activeTab === 'metadata' ? 'block h-full' : 'hidden'}>
             <MetadataManager
               ref={metadataManagerRef}
               symbols={allSymbols}
-              metadata={metadata}
-              onUpdateMetadata={onUpdateMetadata}
+              metadata={localMetadata}
+              onUpdateMetadata={setLocalMetadata}
             />
           </div>
         </div>
