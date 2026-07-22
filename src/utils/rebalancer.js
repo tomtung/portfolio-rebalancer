@@ -137,17 +137,18 @@ export const calculateRebalancing = (accounts, metadata, targetRanges, locks = {
   
   if (solution.feasible) {
     Object.entries(solution).forEach(([key, val]) => {
-      if (val > 0.01) { // Ignore dust
+      const roundedVal = Math.round(val);
+      if (roundedVal > 0) {
         if (key.startsWith('buy_')) {
           const parts = key.split('_');
           const accId = parts[1];
           const sym = parts.slice(2).join('_');
-          trades.push({ type: 'BUY', accountId: accId, symbol: sym, amount: val });
+          trades.push({ type: 'BUY', accountId: accId, symbol: sym, amount: roundedVal });
         } else if (key.startsWith('sell_')) {
           const parts = key.split('_');
           const accId = parts[1];
           const sym = parts.slice(2).join('_');
-          trades.push({ type: 'SELL', accountId: accId, symbol: sym, amount: val });
+          trades.push({ type: 'SELL', accountId: accId, symbol: sym, amount: roundedVal });
         }
       }
     });

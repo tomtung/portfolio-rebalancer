@@ -105,7 +105,7 @@ export default function App() {
   // Handlers
   const handleAdjustmentChange = (accountName, symbol, value) => {
     const key = `${accountName}-${symbol}`;
-    let numValue = parseFloat(value);
+    let numValue = Math.round(parseFloat(value));
 
     const account = mergedAccounts.find(a => a.name === accountName);
     const position = account?.positions.find(p => p.Symbol === symbol);

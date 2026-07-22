@@ -152,8 +152,9 @@ const CsvManager = forwardRef(({ csvData, onUpdateCsv, metadata, onUpdateMetadat
           return new Intl.NumberFormat('en-US', { 
               style: 'currency', 
               currency: 'USD',
-              minimumFractionDigits: 2
-          }).format(num);
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0
+          }).format(Math.round(num));
       }
       return val;
   };

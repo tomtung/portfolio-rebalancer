@@ -5,8 +5,8 @@ export const parseCurrency = (str) => {
   const isNegative = cleanStr.includes('-') || (cleanStr.startsWith('(') && cleanStr.endsWith(')'));
   cleanStr = cleanStr.replace(/[$,\s()]/g, '').replace('+', '');
   const val = parseFloat(cleanStr);
-  return isNaN(val) ? 0 : (isNegative ? -Math.abs(val) : val);
+  return isNaN(val) ? 0 : Math.round(isNegative ? -Math.abs(val) : val);
 };
 
-export const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(num);
+export const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num);
 export const formatPercent = (num) => new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num / 100);
